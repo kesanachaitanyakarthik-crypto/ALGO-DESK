@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.tradingdesk.controller.DashboardViewController"
+            fitToWidth="true" styleClass="view-scroll">
+
+    <VBox styleClass="view-root">
+
+        <!-- KPI strip -->
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="16.66"/>
+                <ColumnConstraints percentWidth="16.66"/>
+                <ColumnConstraints percentWidth="16.66"/>
+                <ColumnConstraints percentWidth="16.66"/>
+                <ColumnConstraints percentWidth="16.66"/>
+                <ColumnConstraints percentWidth="16.66"/>
+            </columnConstraints>
+
+            <VBox styleClass="kpi-card, kpi-accent" GridPane.columnIndex="0">
+                <Label text="PORTFOLIO VALUE" styleClass="kpi-label"/>
+                <Label fx:id="kpiEquity" text="0.00" styleClass="kpi-value"/>
+                <Label fx:id="kpiReturn" text="0.00%" styleClass="kpi-sub"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="1">
+                <Label text="REALIZED P&amp;L" styleClass="kpi-label"/>
+                <Label fx:id="kpiRealized" text="0.00" styleClass="kpi-value"/>
+                <Label text="closed positions" styleClass="kpi-sub"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="2">
+                <Label text="UNREALIZED P&amp;L" styleClass="kpi-label"/>
+                <Label fx:id="kpiUnrealized" text="0.00" styleClass="kpi-value"/>
+                <Label fx:id="kpiCash" text="cash 0.00" styleClass="kpi-sub"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="3">
+                <Label text="EVENTS PROCESSED" styleClass="kpi-label"/>
+                <Label fx:id="kpiEvents" text="0" styleClass="kpi-value"/>
+                <Label fx:id="kpiThroughput" text="0.0/s" styleClass="kpi-sub"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="4">
+                <Label text="ACTIVE WORKERS" styleClass="kpi-label"/>
+                <Label fx:id="kpiWorkers" text="0" styleClass="kpi-value"/>
+                <Label fx:id="kpiQueue" text="queue 0" styleClass="kpi-sub"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="5">
+                <Label text="AVG LATENCY" styleClass="kpi-label"/>
+                <Label fx:id="kpiLatency" text="0 us" styleClass="kpi-value"/>
+                <Label fx:id="kpiPeak" text="peak 0 us" styleClass="kpi-sub"/>
+            </VBox>
+        </GridPane>
+
+        <!-- market watch + signals -->
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="58"/>
+                <ColumnConstraints percentWidth="42"/>
+            </columnConstraints>
+
+            <VBox styleClass="card" GridPane.columnIndex="0">
+                <HBox styleClass="card-header">
+                    <Label text="MARKET WATCH" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="change from session open" styleClass="card-hint"/>
+                </HBox>
+                <TableView fx:id="marketTable" prefHeight="212" >
+                    <columns>
+                        <TableColumn fx:id="marketSymbolColumn" text="INSTRUMENT" prefWidth="150"/>
+                        <TableColumn fx:id="marketLastColumn" text="LAST" prefWidth="110"/>
+                        <TableColumn fx:id="marketChangeColumn" text="CHANGE" prefWidth="100"/>
+                        <TableColumn fx:id="marketVolumeColumn" text="VOLUME" prefWidth="110"/>
+                    </columns>
+                </TableView>
+            </VBox>
+
+            <VBox styleClass="card" GridPane.columnIndex="1">
+                <HBox styleClass="card-header">
+                    <Label text="LATEST SIGNALS" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="signalMixLabel" text="" styleClass="card-hint"/>
+                </HBox>
+                <TableView fx:id="signalTable" prefHeight="212" >
+                    <columns>
+                        <TableColumn fx:id="signalSymbolColumn" text="SYMBOL" prefWidth="100"/>
+                        <TableColumn fx:id="signalTypeColumn" text="SIGNAL" prefWidth="92"/>
+                        <TableColumn fx:id="signalConfidenceColumn" text="CONF" prefWidth="78"/>
+                        <TableColumn fx:id="signalTimeColumn" text="TIME" prefWidth="96"/>
+                    </columns>
+                </TableView>
+            </VBox>
+        </GridPane>
+
+        <!-- chart + performance -->
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="64"/>
+                <ColumnConstraints percentWidth="36"/>
+            </columnConstraints>
+
+            <VBox styleClass="card" GridPane.columnIndex="0">
+                <HBox styleClass="card-header">
+                    <Label text="PRICE TREND" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="change vs session open" styleClass="card-hint"/>
+                </HBox>
+                <LineChart fx:id="priceChart" prefHeight="240" legendVisible="true"
+                           createSymbols="false" animated="false" styleClass="chart">
+                    <xAxis>
+                        <CategoryAxis fx:id="priceChartXAxis"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis fx:id="priceChartYAxis" forceZeroInRange="false"/>
+                    </yAxis>
+                </LineChart>
+            </VBox>
+
+            <VBox styleClass="card" GridPane.columnIndex="1">
+                <Label text="SYSTEM PERFORMANCE" styleClass="card-title"/>
+                <GridPane hgap="8" vgap="6">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="55"/>
+                        <ColumnConstraints percentWidth="45"/>
+                    </columnConstraints>
+
+                    <Label text="Queue depth" styleClass="metric-label" GridPane.rowIndex="0"/>
+                    <Label fx:id="perfQueue" text="0" styleClass="metric-value" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <Label text="Queue capacity" styleClass="metric-label" GridPane.rowIndex="1"/>
+                    <Label fx:id="perfCapacity" text="0" styleClass="metric-value" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                    <Label text="Peak latency" styleClass="metric-label" GridPane.rowIndex="2"/>
+                    <Label fx:id="perfPeak" text="0 us" styleClass="metric-value" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                    <Label text="Throughput" styleClass="metric-label" GridPane.rowIndex="3"/>
+                    <Label fx:id="perfThroughput" text="0/s" styleClass="metric-value" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                    <Label text="Dropped events" styleClass="metric-label" GridPane.rowIndex="4"/>
+                    <Label fx:id="perfDropped" text="0" styleClass="metric-value" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                    <Label text="Orders executed" styleClass="metric-label" GridPane.rowIndex="5"/>
+                    <Label fx:id="perfExecuted" text="0" styleClass="metric-value" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                    <Label text="Orders rejected" styleClass="metric-label" GridPane.rowIndex="6"/>
+                    <Label fx:id="perfRejected" text="0" styleClass="metric-value" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+                    <Label text="Rejection rate" styleClass="metric-label" GridPane.rowIndex="7"/>
+                    <Label fx:id="perfRejectionRate" text="0.00%" styleClass="metric-value" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                </GridPane>
+            </VBox>
+        </GridPane>
+
+        <!-- logs -->
+        <VBox styleClass="card">
+            <HBox styleClass="card-header">
+                <Label text="LIVE ACTIVITY" styleClass="card-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="most recent last" styleClass="card-hint"/>
+            </HBox>
+            <TextArea fx:id="logArea" editable="false" prefHeight="120" wrapText="false"
+                      styleClass="log-area"/>
+        </VBox>
+
+    </VBox>
+</ScrollPane>

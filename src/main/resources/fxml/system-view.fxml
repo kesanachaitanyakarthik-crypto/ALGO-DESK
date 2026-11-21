@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.tradingdesk.controller.SystemController"
+            fitToWidth="true" styleClass="view-scroll">
+
+    <VBox styleClass="view-root">
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+            </columnConstraints>
+
+            <VBox styleClass="kpi-card" GridPane.columnIndex="0">
+                <Label text="EVENTS PROCESSED" styleClass="kpi-label"/>
+                <Label fx:id="eventsValue" text="0" styleClass="kpi-value"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="1">
+                <Label text="ACTIVE WORKERS" styleClass="kpi-label"/>
+                <Label fx:id="workersValue" text="0" styleClass="kpi-value"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="2">
+                <Label text="AVERAGE LATENCY" styleClass="kpi-label"/>
+                <Label fx:id="avgLatencyValue" text="0 us" styleClass="kpi-value"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="3">
+                <Label text="THROUGHPUT" styleClass="kpi-label"/>
+                <Label fx:id="throughputValue" text="0/s" styleClass="kpi-value"/>
+            </VBox>
+        </GridPane>
+
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="50"/>
+                <ColumnConstraints percentWidth="50"/>
+            </columnConstraints>
+
+            <VBox styleClass="card" GridPane.columnIndex="0" spacing="10">
+                <Label text="QUEUE" styleClass="card-title"/>
+                <VBox spacing="7">
+                    <HBox spacing="10">
+                        <Label text="Depth" styleClass="metric-label"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="queueValue" text="0" styleClass="metric-value"/>
+                    </HBox>
+                    <HBox spacing="10">
+                        <Label text="Capacity" styleClass="metric-label"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="capacityValue" text="0" styleClass="metric-value"/>
+                    </HBox>
+                    <HBox spacing="10">
+                        <Label text="Dropped" styleClass="metric-label"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="droppedValue" text="0" styleClass="metric-value"/>
+                    </HBox>
+                </VBox>
+                <ProgressBar fx:id="queueBar" progress="0" maxWidth="Infinity"/>
+                <Label fx:id="queueUtilizationLabel" text="0.0% of capacity" styleClass="card-hint"/>
+            </VBox>
+
+            <VBox styleClass="card" GridPane.columnIndex="1" spacing="10">
+                <Label text="LATENCY" styleClass="card-title"/>
+                <VBox spacing="7">
+                    <HBox spacing="10">
+                        <Label text="Average" styleClass="metric-label"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="avgLatencyMirror" text="0 us" styleClass="metric-value"/>
+                    </HBox>
+                    <HBox spacing="10">
+                        <Label text="Peak" styleClass="metric-label"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="peakLatencyValue" text="0 us" styleClass="metric-value"/>
+                    </HBox>
+                </VBox>
+                <Label text="Latency is measured per event inside the worker pool; peak includes JIT warm-up."
+                       styleClass="card-hint" wrapText="true"/>
+            </VBox>
+        </GridPane>
+
+        <VBox styleClass="card">
+            <Label text="LIVE ACTIVITY LOG" styleClass="card-title"/>
+            <TextArea fx:id="logArea" editable="false" prefHeight="260" wrapText="false"
+                      styleClass="log-area"/>
+        </VBox>
+    </VBox>
+</ScrollPane>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.tradingdesk.controller.MarketWatchController"
+            fitToWidth="true" styleClass="view-scroll">
+
+    <VBox styleClass="view-root">
+        <VBox styleClass="card">
+            <HBox styleClass="card-header">
+                <Label text="MARKET WATCH" styleClass="card-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="summaryLabel" text="" styleClass="card-hint"/>
+            </HBox>
+            <TableView fx:id="marketTable" prefHeight="520" >
+                <columns>
+                    <TableColumn fx:id="symbolColumn" text="INSTRUMENT" prefWidth="170"/>
+                    <TableColumn fx:id="lastColumn" text="LAST" prefWidth="130"/>
+                    <TableColumn fx:id="changeColumn" text="CHANGE %" prefWidth="120"/>
+                    <TableColumn fx:id="volumeColumn" text="VOLUME" prefWidth="140"/>
+                    <TableColumn fx:id="momentumColumn" text="TREND" prefWidth="110"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </VBox>
+</ScrollPane>

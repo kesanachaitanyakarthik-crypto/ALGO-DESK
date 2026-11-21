@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Processor: die with an inner core and pins on all four sides. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <path fill-rule="evenodd" d="
+    M5 5 H19 V19 H5 Z
+    M9 9 H15 V15 H9 Z"/>
+  <path d="
+    M10.6 1.5 H13.4 V5 H10.6 Z M10.6 19 H13.4 V22.5 H10.6 Z
+    M1.5 10.6 H5 V13.4 H1.5 Z M19 10.6 H22.5 V13.4 H19 Z"/>
+</svg>

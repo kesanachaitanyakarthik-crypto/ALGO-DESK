@@ -1,0 +1,7 @@
+# Taste
+- Prefers strictly phase-gated delivery: finish one phase, then report created files, modified files, implemented functionality, tests run, build status, and remaining issues — and wait for explicit approval before starting the next major phase. Confidence: 0.85
+- Prefers the agent to ask before making architectural decisions when requirements are ambiguous, and to inspect existing files and reuse working code rather than deleting it without approval. Confidence: 0.8
+- Wants secrets kept out of source code and the application never run as the database root/admin account (use a dedicated least-privilege app user, credentials via env vars/gitignored config). Confidence: 0.8
+- Demands honesty about what was actually built and measured: never fabricate benchmarks or performance numbers (report only readings from the running application), never claim a subsystem (e.g. database connectivity or CRUD) is verified until it has actually been exercised, avoid static mockup/hardcoded values in UI, and never describe rule-based logic as a trained AI/ML model. Confidence: 0.9
+- Expects each increment of UI work to produce a visibly working change in the running application — do not stop at scaffolding/support layers that are not yet wired into the UI; verify the change is actually visible in the app. Confidence: 0.7
+- In UI work, wants a consistent icon/graphic system from local assets in the resources directory — no emojis or ad-hoc Unicode symbols, and no fabricated or unlicensed third-party logos (fall back to clean generated badges). Confidence: 0.7

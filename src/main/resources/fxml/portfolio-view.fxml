@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.tradingdesk.controller.PortfolioController"
+            fitToWidth="true" styleClass="view-scroll">
+
+    <VBox styleClass="view-root">
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="20"/>
+                <ColumnConstraints percentWidth="20"/>
+                <ColumnConstraints percentWidth="20"/>
+                <ColumnConstraints percentWidth="20"/>
+                <ColumnConstraints percentWidth="20"/>
+            </columnConstraints>
+
+            <VBox styleClass="kpi-card, kpi-accent" GridPane.columnIndex="0">
+                <Label text="TOTAL EQUITY" styleClass="kpi-label"/>
+                <Label fx:id="equityLabel" text="0.00" styleClass="kpi-value"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="1">
+                <Label text="CASH" styleClass="kpi-label"/>
+                <Label fx:id="cashLabel" text="0.00" styleClass="kpi-value"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="2">
+                <Label text="REALIZED P&amp;L" styleClass="kpi-label"/>
+                <Label fx:id="realizedLabel" text="0.00" styleClass="kpi-value"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="3">
+                <Label text="UNREALIZED P&amp;L" styleClass="kpi-label"/>
+                <Label fx:id="unrealizedLabel" text="0.00" styleClass="kpi-value"/>
+            </VBox>
+            <VBox styleClass="kpi-card" GridPane.columnIndex="4">
+                <Label text="SESSION RETURN" styleClass="kpi-label"/>
+                <Label fx:id="returnLabel" text="0.00%" styleClass="kpi-value"/>
+            </VBox>
+        </GridPane>
+
+        <VBox styleClass="card">
+            <Label text="EQUITY CURVE" styleClass="card-title"/>
+            <LineChart fx:id="equityChart" prefHeight="230" legendVisible="false"
+                       createSymbols="false" animated="false" styleClass="chart">
+                <xAxis><CategoryAxis fx:id="equityXAxis"/></xAxis>
+                <yAxis><NumberAxis fx:id="equityYAxis" forceZeroInRange="false"/></yAxis>
+            </LineChart>
+            <Label text="Total equity sampled once per refresh"
+                   styleClass="card-hint"/>
+        </VBox>
+
+        <VBox styleClass="card">
+            <Label text="EXECUTED ORDERS" styleClass="card-title"/>
+            <TableView fx:id="ledgerTable" prefHeight="220" >
+                <columns>
+                    <TableColumn fx:id="ledgerSymbolColumn" text="SYMBOL" prefWidth="130"/>
+                    <TableColumn fx:id="ledgerSideColumn" text="SIDE" prefWidth="100"/>
+                    <TableColumn fx:id="ledgerQtyColumn" text="QTY" prefWidth="90"/>
+                    <TableColumn fx:id="ledgerStatusColumn" text="STATUS" prefWidth="120"/>
+                    <TableColumn fx:id="ledgerTimeColumn" text="TIME" prefWidth="130"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </VBox>
+</ScrollPane>

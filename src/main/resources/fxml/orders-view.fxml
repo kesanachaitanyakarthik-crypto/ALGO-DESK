@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.tradingdesk.controller.OrdersController"
+            fitToWidth="true" styleClass="view-scroll">
+
+    <VBox styleClass="view-root">
+        <VBox styleClass="card">
+            <HBox styleClass="card-header">
+                <Label text="OPEN ORDERS" styleClass="card-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="summaryLabel" text="" styleClass="card-hint"/>
+            </HBox>
+            <TableView fx:id="openTable" prefHeight="160" >
+                <columns>
+                    <TableColumn fx:id="openIdColumn" text="ORDER" prefWidth="110"/>
+                    <TableColumn fx:id="openSymbolColumn" text="SYMBOL" prefWidth="130"/>
+                    <TableColumn fx:id="openSideColumn" text="SIDE" prefWidth="100"/>
+                    <TableColumn fx:id="openQtyColumn" text="QTY" prefWidth="90"/>
+                    <TableColumn fx:id="openStatusColumn" text="STATUS" prefWidth="130"/>
+                </columns>
+            </TableView>
+        </VBox>
+
+        <VBox styleClass="card">
+            <Label text="ORDER HISTORY" styleClass="card-title"/>
+            <TableView fx:id="historyTable" prefHeight="380" >
+                <columns>
+                    <TableColumn fx:id="historySymbolColumn" text="SYMBOL" prefWidth="120"/>
+                    <TableColumn fx:id="historySideColumn" text="SIDE" prefWidth="90"/>
+                    <TableColumn fx:id="historyQtyColumn" text="QTY" prefWidth="80"/>
+                    <TableColumn fx:id="historyStatusColumn" text="STATUS" prefWidth="120"/>
+                    <TableColumn fx:id="historyReasonColumn" text="REJECTION REASON" prefWidth="330"/>
+                    <TableColumn fx:id="historyTimeColumn" text="TIME" prefWidth="120"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </VBox>
+</ScrollPane>

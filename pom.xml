@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.tradingdesk</groupId>
+    <artifactId>trading-desk-test</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <name>Algorithmic Trading Desk</name>
+    <description>Academic high-frequency algorithmic trading desk simulation</description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <javafx.version>21.0.2</javafx.version>
+        <mysql.connector.version>9.7.0</mysql.connector.version>
+        <junit.version>5.13.4</junit.version>
+        <!-- Live MySQL integration tests stay disabled unless enabled on the command line. -->
+        <db.enabled>false</db.enabled>
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql.connector.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+                <configuration>
+                    <mainClass>com.tradingdesk.Main</mainClass>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+                <configuration>
+                    <!--
+                      Surefire runs tests in a forked JVM. A property passed on the Maven command
+                      line (mvn test -Ddb.enabled=true) is a MAVEN property; it is NOT
+                      automatically a system property inside that fork, and the fork does not
+                      inherit variables defined in an IDE run configuration either. Both are
+                      forwarded explicitly below.
+
+                      Without this, @EnabledIfSystemProperty never sees db.enabled, the whole
+                      integration class is excluded, and Surefire reports the unhelpful
+                      "Tests run: 0, Skipped: 0".
+
+                      Credentials are read from the environment of the Maven process only; nothing
+                      is hardcoded. When they are absent the integration tests fail with an
+                      explicit "MySQL is not reachable: ..." message instead of silently passing.
+
+                      Usage:  mvn test -Ddb.enabled=true
+                    -->
+                    <systemPropertyVariables>
+                        <db.enabled>${db.enabled}</db.enabled>
+                    </systemPropertyVariables>
+                    <environmentVariables>
+                        <DB_URL>${env.DB_URL}</DB_URL>
+                        <DB_USERNAME>${env.DB_USERNAME}</DB_USERNAME>
+                        <DB_PASSWORD>${env.DB_PASSWORD}</DB_PASSWORD>
+                    </environmentVariables>
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

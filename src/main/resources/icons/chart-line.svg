@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Filled area chart: a rising trend inside a plot frame. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <path fill-rule="evenodd" d="
+    M3 3 H21 V21 H3 Z
+    M5 17.6 L8.4 12.6 L11.6 15.0 L14.8 8.6 L19 11.4 V19 H5 Z"/>
+</svg>

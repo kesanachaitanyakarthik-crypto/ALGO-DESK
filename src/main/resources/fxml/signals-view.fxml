@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.tradingdesk.controller.SignalsController"
+            fitToWidth="true" styleClass="view-scroll">
+
+    <VBox styleClass="view-root">
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="72"/>
+                <ColumnConstraints percentWidth="28"/>
+            </columnConstraints>
+
+            <VBox styleClass="card" GridPane.columnIndex="0">
+                <HBox styleClass="card-header">
+                    <Label text="GENERATED SIGNALS" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="summaryLabel" text="" styleClass="card-hint"/>
+                </HBox>
+                <TableView fx:id="signalTable" prefHeight="480" >
+                    <columns>
+                        <TableColumn fx:id="symbolColumn" text="SYMBOL" prefWidth="120"/>
+                        <TableColumn fx:id="typeColumn" text="SIGNAL" prefWidth="100"/>
+                        <TableColumn fx:id="confidenceColumn" text="CONF" prefWidth="90"/>
+                        <TableColumn fx:id="rationaleColumn" text="RATIONALE" prefWidth="380"/>
+                        <TableColumn fx:id="timeColumn" text="TIME" prefWidth="110"/>
+                    </columns>
+                </TableView>
+            </VBox>
+
+            <VBox styleClass="card" GridPane.columnIndex="1">
+                <Label text="SIGNAL DISTRIBUTION" styleClass="card-title"/>
+                <BarChart fx:id="mixChart" prefHeight="300" legendVisible="false" animated="false"
+                          styleClass="chart">
+                    <xAxis><CategoryAxis fx:id="mixXAxis"/></xAxis>
+                    <yAxis><NumberAxis fx:id="mixYAxis" forceZeroInRange="true"/></yAxis>
+                </BarChart>
+                <Label text="Counts over the retained signal history"
+                       styleClass="card-hint" wrapText="true"/>
+            </VBox>
+        </GridPane>
+    </VBox>
+</ScrollPane>

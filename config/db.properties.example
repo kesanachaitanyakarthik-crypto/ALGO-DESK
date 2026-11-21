@@ -1,0 +1,12 @@
+# Database configuration (example)
+#
+# Copy this file to config/db.properties and fill in your own password.
+# config/db.properties is gitignored and must never be committed.
+#
+# Environment variables take precedence over this file:
+#   DB_URL, DB_USERNAME, DB_PASSWORD
+
+db.url=jdbc:mysql://localhost:3306/trading_desk?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+db.username=trading_app
+db.password=CHANGE_ME
+db.driver=com.mysql.cj.jdbc.Driver

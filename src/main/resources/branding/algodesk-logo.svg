@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ALGO DESK brand mark.
+
+  A hexagonal venue ring enclosing three ascending bars and a rising trend
+  arrow: the geometric trading symbol plus an unambiguous upward-market element.
+
+  The ring is drawn with fill-rule evenodd so the interior becomes a hole, and
+  the bars/arrow are separate subpaths so a single gradient fill can be applied
+  to the whole mark by the JavaFX IconLoader.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <path fill-rule="evenodd" d="
+    M32 3 L56 16.5 L56 47.5 L32 61 L8 47.5 L8 16.5 Z
+    M32 12 L16 21.2 L16 42.8 L32 52 L48 42.8 L48 21.2 Z
+
+    M20 37.4 H24.6 V44 H20 Z
+    M27.2 31.4 H31.8 V44 H27.2 Z
+    M34.4 25.4 H39 V44 H34.4 Z
+
+    M42.2 22.6 L48 20.4 L45.8 26.2 L44.8 24.2 L41.6 27.4 L39.8 25.6 L43 22.4 Z
+  "/>
+</svg>

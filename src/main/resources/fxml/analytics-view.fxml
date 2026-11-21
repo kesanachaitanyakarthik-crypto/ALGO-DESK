@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.tradingdesk.controller.AnalyticsController"
+            fitToWidth="true" styleClass="view-scroll">
+
+    <VBox styleClass="view-root">
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="73"/>
+                <ColumnConstraints percentWidth="27"/>
+            </columnConstraints>
+
+            <VBox styleClass="card" GridPane.columnIndex="0">
+                <HBox styleClass="card-header">
+                    <Label text="PRICE WITH SMA / EMA" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <ComboBox fx:id="symbolSelector" prefWidth="130"/>
+                </HBox>
+                <LineChart fx:id="indicatorChart" prefHeight="420" legendVisible="true"
+                           createSymbols="false" animated="false" styleClass="chart">
+                    <xAxis><CategoryAxis fx:id="indicatorXAxis"/></xAxis>
+                    <yAxis><NumberAxis fx:id="indicatorYAxis" forceZeroInRange="false"/></yAxis>
+                </LineChart>
+                <Label text="Overlays use the same rolling window as the prediction engine"
+                       styleClass="card-hint"/>
+            </VBox>
+
+            <VBox styleClass="card" GridPane.columnIndex="1" spacing="11">
+                <Label text="INDICATORS" styleClass="card-title"/>
+
+                <VBox spacing="2">
+                    <Label text="SIMPLE MOVING AVERAGE" styleClass="about-key"/>
+                    <Label fx:id="smaLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="EXPONENTIAL MOVING AVG" styleClass="about-key"/>
+                    <Label fx:id="emaLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="RATE OF CHANGE" styleClass="about-key"/>
+                    <Label fx:id="rocLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="ROLLING VOLATILITY" styleClass="about-key"/>
+                    <Label fx:id="volatilityLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="ORDER BOOK IMBALANCE" styleClass="about-key"/>
+                    <Label fx:id="imbalanceLabel" text="-" styleClass="about-value"/>
+                </VBox>
+
+                <Region prefHeight="6"/>
+
+                <HBox spacing="10">
+                    <Label text="HISTORY" styleClass="about-key"/>
+                    <Label fx:id="sampleLabel" text="0 samples" styleClass="about-value"/>
+                </HBox>
+                <HBox spacing="10">
+                    <Label text="STATE" styleClass="about-key"/>
+                    <Label fx:id="reliabilityLabel" text="Warming up" styleClass="about-value"/>
+                </HBox>
+            </VBox>
+        </GridPane>
+    </VBox>
+</ScrollPane>

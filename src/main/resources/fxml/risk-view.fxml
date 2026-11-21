@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.tradingdesk.controller.RiskController"
+            fitToWidth="true" styleClass="view-scroll">
+
+    <VBox styleClass="view-root">
+        <GridPane hgap="11" vgap="11">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="68"/>
+                <ColumnConstraints percentWidth="32"/>
+            </columnConstraints>
+
+            <VBox styleClass="card" GridPane.columnIndex="0">
+                <HBox styleClass="card-header">
+                    <Label text="RISK ALERTS" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="summaryLabel" text="" styleClass="card-hint"/>
+                </HBox>
+                <TableView fx:id="alertTable" prefHeight="470" >
+                    <columns>
+                        <TableColumn fx:id="ruleColumn" text="RULE" prefWidth="180"/>
+                        <TableColumn fx:id="symbolColumn" text="SYMBOL" prefWidth="110"/>
+                        <TableColumn fx:id="severityColumn" text="SEVERITY" prefWidth="110"/>
+                        <TableColumn fx:id="messageColumn" text="DETAIL" prefWidth="330"/>
+                        <TableColumn fx:id="timeColumn" text="TIME" prefWidth="110"/>
+                    </columns>
+                </TableView>
+            </VBox>
+
+            <VBox styleClass="card" GridPane.columnIndex="1" spacing="10">
+                <Label text="ACTIVE CONTROLS" styleClass="card-title"/>
+                <VBox spacing="9">
+                    <VBox spacing="2">
+                        <Label text="MAX ORDER QUANTITY" styleClass="about-key"/>
+                        <Label text="1 000 units per order" styleClass="about-value"/>
+                    </VBox>
+                    <VBox spacing="2">
+                        <Label text="MAX POSITION VALUE" styleClass="about-key"/>
+                        <Label text="250 000.00 notional" styleClass="about-value"/>
+                    </VBox>
+                    <VBox spacing="2">
+                        <Label text="DAILY MAX LOSS" styleClass="about-key"/>
+                        <Label text="25 000.00 realized" styleClass="about-value"/>
+                    </VBox>
+                    <VBox spacing="2">
+                        <Label text="PRICE DEVIATION" styleClass="about-key"/>
+                        <Label text="5.00% from market" styleClass="about-value"/>
+                    </VBox>
+                    <VBox spacing="2">
+                        <Label text="DUPLICATE WINDOW" styleClass="about-key"/>
+                        <Label text="750 ms" styleClass="about-value"/>
+                    </VBox>
+                </VBox>
+                <Label text="Thresholds are configured in the risk module (RiskConfiguration.defaults)."
+                       styleClass="card-hint" wrapText="true"/>
+            </VBox>
+        </GridPane>
+    </VBox>
+</ScrollPane>
