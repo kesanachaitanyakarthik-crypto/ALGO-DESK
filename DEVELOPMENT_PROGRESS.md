@@ -5,6 +5,81 @@
 
 ---
 
+## Four-phase platform enhancement
+
+**Status:** All four phases implemented; 290 tests passing, BUILD SUCCESS.
+
+Committed in four checkpoints on `master` (baseline → paper → strategy/backtest → marketdata/exchange),
+so any phase can be reviewed or reverted independently.
+
+### Phase 1 — Paper trading
+
+New package `com.tradingdesk.paper`: `PaperAccount`, `WorkingOrder`, `OrderLifecycle`, `OrderFill`,
+`OrderRequest`/`OrderKind`, `ExecutionCosts`, `ExecutionEngine`/`SimulatedExecutionEngine`,
+`PaperBroker`.
+
+- Five order kinds: MARKET, LIMIT, STOP, STOP_LIMIT, TAKE_PROFIT; modify and cancel supported.
+- Lifecycle `NEW → OPEN → PARTIALLY_FILLED → FILLED` (plus CANCELLED/REJECTED) with illegal
+  transitions rejected by `OrderLifecycle`.
+- Execution models bid/ask spread, adverse slippage, commission, per-tick fill fraction and liquidity
+  caps, producing genuine partial fills.
+- Balance, margin, equity, realised/unrealised P&L and transaction history on the account.
+- `PaperBroker` reuses the existing `PortfolioManager` and `RiskManager` rather than duplicating them.
+- `OrderStatus` extended **additively** (`NEW`, `OPEN`, `PARTIALLY_FILLED`, `FILLED`); existing
+  constants and semantics preserved so the original 95 tests were unaffected.
+
+### Phase 2 — Indicators, strategies, backtesting
+
+- `AdvancedIndicators`: RSI (Wilder), MACD, Bollinger Bands, ATR (Wilder), Stochastic, VWAP — each
+  verified against hand-computed reference values.
+- `com.tradingdesk.strategy`: `TradingStrategy`, `StrategyParameters` (validated, with defaults),
+  `StrategyRegistry` and five strategies — MA crossover, RSI reversal, MACD crossover, Bollinger
+  reversal, momentum — each with entry, exit, stop, target and sizing.
+- `com.tradingdesk.backtest`: `HistoricalDataset` (truncated context prevents look-ahead),
+  `BacktestEngine`, `BacktestMetrics`, `BacktestComparison`.
+- Look-ahead safety is structural: at bar *i* the strategy physically receives only bars `0..i`, and
+  its decision fills at bar *i+1*'s open. A dedicated test asserts this for every decision.
+- Metrics: total return, win rate, max drawdown, profit factor, Sharpe, average win/loss, trade count.
+
+### Phase 3 — Market data
+
+- `com.tradingdesk.marketdata`: `MarketDataProvider` SPI, `ProviderKind`, `Candle`, `Quote`,
+  `MarketDataStatus`, `BinanceResponseParser`, `BinancePublicProvider`, `SimulatedMarketDataProvider`.
+- `ProviderKind` makes mislabelling impossible: simulated data always renders as
+  "Simulated (not live)".
+- Binance provider uses **public** endpoints only (`/api/v3/klines`, `/api/v3/ticker/bookTicker`) —
+  no API key — with request throttling, an OHLCV cache and graceful error handling.
+- **Verified against the live Binance API**: 4/4 integration tests passed, fetching real BTCUSDT
+  candles and a real quote.
+
+### Phase 4 — Exchange integration (safely gated)
+
+- `com.tradingdesk.exchange`: `ExchangeClient`, `MockExchange`, `ExchangeBalance/Position/Order`,
+  `LiveSafetyLimits`, `ExchangeCredentials`, `RequestSigner`, `TradingModeGuard`, `LiveTradingDisabledException`.
+- Live trading demands all three of `-Dtd.live=true`, environment credentials, and the exact phrase
+  `ENABLE LIVE TRADING`; each is re-checked before every order. `killSwitch()` permanently reverts to
+  paper for the process.
+- Credentials come from the environment only, are masked in `toString()`, and the secret has no
+  public accessor.
+- `RequestSigner` implements HMAC-SHA256 verified against a published vector.
+- **No adapter can send a real order.** `MockExchange` is the sole implementation; it is a sandbox
+  with failure injection and rate-limit simulation, and it is what the tests exercise.
+
+### Database
+
+`MigrationRunner` + five additive, versioned migrations (V1–V5) applied in transactions and recorded
+in `schema_version`. Verified live: all five applied, the run is idempotent, and all ten expected
+tables exist. **No existing table or row was altered or dropped.**
+
+### Regression found and fixed
+
+The pre-existing `instrumentInsertSelectUpdateDelete` test deleted the shared symbol `MSFT`, which
+foreign keys from `trading_signals` can block once real data exists. It now uses a dedicated
+`ZZTEST` symbol, so it cannot be affected by other rows. This was a latent fragility, not caused by
+the new phases, and it is fixed.
+
+---
+
 ## Visual redesign and branding
 
 **Status:** Complete and verified by running the application.

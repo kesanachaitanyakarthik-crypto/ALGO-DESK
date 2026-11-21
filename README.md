@@ -36,6 +36,54 @@ icons in `icons/`. Company marks are generated monogram badges, **not** licensed
 
 ---
 
+## Platform capabilities
+
+Beyond the original simulation, the project now includes four additional layers.
+
+### Paper trading (`com.tradingdesk.paper`)
+
+- `PaperAccount` — virtual balance, cash, posted margin, available balance, equity, realised P&L and
+  a bounded transaction history.
+- Order kinds: `MARKET`, `LIMIT`, `STOP`, `STOP_LIMIT`, `TAKE_PROFIT`, with cancellation and
+  modification before any fill.
+- `WorkingOrder` + `OrderLifecycle` enforce `NEW → OPEN → PARTIALLY_FILLED → FILLED` (or
+  `CANCELLED`/`REJECTED`) and reject illegal transitions.
+- `SimulatedExecutionEngine` charges the spread (buys at the ask, sells at the bid), applies adverse
+  slippage, commission, a per-tick fill fraction and a liquidity cap — which together produce partial
+  fills rather than instant full execution.
+- `PaperBroker` reuses the existing `PortfolioManager` and `RiskManager`; it does not duplicate
+  position or risk logic.
+
+### Strategies and backtesting (`com.tradingdesk.strategy`, `com.tradingdesk.backtest`)
+
+- Indicators: SMA, EMA, ROC, rolling volatility (existing) plus RSI, MACD, Bollinger Bands, ATR,
+  Stochastic Oscillator and VWAP.
+- Five strategies — MA crossover, RSI reversal, MACD crossover, Bollinger reversal, momentum — each
+  with configurable entry, exit, stop-loss, take-profit, sizing and parameters.
+- `BacktestEngine` is look-ahead-safe by construction: at bar *i* the strategy can only see bars
+  `0..i`, and its decision is filled at bar *i+1*'s open. Fees and slippage apply on both sides.
+- Metrics: total return, win rate, maximum drawdown, profit factor, Sharpe ratio, average win/loss
+  and trade count. `BacktestComparison` ranks strategies over one identical dataset.
+
+### Market data (`com.tradingdesk.marketdata`)
+
+- `MarketDataProvider` SPI with declared capabilities, plus `Candle` and `Quote`.
+- `ProviderKind` distinguishes SIMULATED, LIVE, DELAYED and HISTORICAL, so simulated data is always
+  labelled "not live" in the UI.
+- `BinancePublicProvider` uses only **public** REST endpoints (`/api/v3/klines`,
+  `/api/v3/ticker/bookTicker`) — no API key — with request throttling and an OHLCV cache.
+  `SimulatedMarketDataProvider` exposes the existing simulator through the same contract.
+
+### Exchange integration (`com.tradingdesk.exchange`)
+
+- `ExchangeClient` SPI, `MockExchange` (used by every test), `LiveSafetyLimits`.
+- `ExchangeCredentials` reads `EXCHANGE_API_KEY` / `EXCHANGE_API_SECRET` from the environment only,
+  masks itself in `toString()`, and never exposes the secret through a public accessor.
+- `RequestSigner` implements HMAC-SHA256 request signing, verified against published vectors.
+- `TradingModeGuard` is the single authority on live trading (see below).
+
+---
+
 ## Contents
 
 - [Architecture](#architecture)
@@ -199,6 +247,71 @@ Inside the dashboard:
 
 The window opens at 1366×768 and is usable down to 1180×700; layouts are verified at
 1366×768, 1600×900 and 1920×1080, including Windows display scaling at 125%.
+
+---
+
+## Paper vs Live trading
+
+**Paper is the default and the only mode reachable without deliberate, multi-step action.** No code
+path enables live trading as a side effect of anything else.
+
+`TradingModeGuard` requires **all three** of the following, and re-checks them immediately before
+every order:
+
+1. The JVM was started with `-Dtd.live=true`.
+2. `EXCHANGE_API_KEY` and `EXCHANGE_API_SECRET` are present in the environment.
+3. The operator typed the exact confirmation phrase `ENABLE LIVE TRADING`.
+
+If any is missing, `activateLive(...)` throws `LiveTradingDisabledException` naming the reason, and
+`diagnostics()` reports each precondition individually.
+
+### Run in paper mode (default)
+
+Nothing to do — that is the default. No property, no credentials, no confirmation.
+
+### Attempt live mode
+
+```powershell
+$env:EXCHANGE_API_KEY="your-key"
+$env:EXCHANGE_API_SECRET="your-secret"
+# then activate live mode and type: ENABLE LIVE TRADING
+```
+
+This project ships **no adapter that can send a real order** — `MockExchange` is the only
+implementation — so even a fully authorized guard cannot place a real-money order.
+
+### Stop live trading immediately
+
+```java
+guard.killSwitch();
+```
+
+Reverts to paper mode and **permanently** blocks re-activation for the rest of the process;
+re-enabling requires a restart, so a panicked click cannot instantly re-arm trading.
+
+### Live safety limits
+
+`LiveSafetyLimits` enforces maximum order notional, maximum daily loss, maximum open positions and
+duplicate-order prevention, with deliberately small defaults.
+
+---
+
+## Database migrations
+
+`MigrationRunner` applies versioned SQL from `src/main/resources/db/migration` and records each
+version in `schema_version`.
+
+| Version | Contents |
+|---------|----------|
+| V1 | Baseline marker (the original seven tables are created by `SchemaMigrator`) |
+| V2 | `paper_accounts`, `paper_orders`, `paper_fills` |
+| V3 | `strategies`, `backtest_runs`, `backtest_trades` |
+| V4 | `candles`, `market_data_status` |
+| V5 | `exchange_connections` (metadata only — **no credentials are ever stored**) |
+
+Migrations are **additive by policy**: they create and alter, never drop or truncate, so existing
+records survive. Each runs in its own transaction alongside its version row, and re-running is a
+no-op. A unit test asserts no migration contains destructive DDL.
 
 ---
 
