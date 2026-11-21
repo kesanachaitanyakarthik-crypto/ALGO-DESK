@@ -142,7 +142,7 @@ class SnapshotBuilderTest {
     void indicatorsFlagInsufficientHistory() {
         FakeTradingService service = new FakeTradingService();
         service.selected = new LinkedHashSet<>(List.of("AAPL"));
-        service.indicators = new IndicatorSnapshot(100, 101, 0.01, 0.5, 0.2, 1, Instant.now());
+        service.indicators = IndicatorSnapshot.ofCore(100, 101, 0.01, 0.5, 0.2, 1, Instant.now());
 
         ViewSnapshot snapshot = new SnapshotBuilder(service, 100_000.0).build();
         assertFalse(snapshot.indicators().reliable());
@@ -171,7 +171,7 @@ class SnapshotBuilderTest {
     }
 
     private static TradeSignal signal(SignalType type) {
-        IndicatorSnapshot indicators = new IndicatorSnapshot(100, 100, 0, 0, 0, 20, Instant.now());
+        IndicatorSnapshot indicators = IndicatorSnapshot.ofCore(100, 100, 0, 0, 0, 20, Instant.now());
         return new TradeSignal(AAPL, type, 0.6, "test", indicators, Instant.now());
     }
 

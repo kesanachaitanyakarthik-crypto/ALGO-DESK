@@ -208,7 +208,8 @@ class MySqlPersistenceIntegrationTest {
     @Test
     @org.junit.jupiter.api.Order(7)
     void tradingSignalInsertAndSelectBack() {
-        IndicatorSnapshot indicators = new IndicatorSnapshot(190, 191, 0.004, 0.2, 0.15, 20, Instant.now());
+        IndicatorSnapshot indicators =
+                IndicatorSnapshot.ofCore(190, 191, 0.004, 0.2, 0.15, 20, Instant.now());
         TradeSignal signal = new TradeSignal(aapl(), SignalType.BUY, 0.72,
                 "integration test signal", indicators, Instant.now());
 

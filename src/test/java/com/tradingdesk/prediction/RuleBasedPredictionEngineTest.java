@@ -19,7 +19,7 @@ class RuleBasedPredictionEngineTest {
             new RuleBasedPredictionEngine(new PredictionConfig(0.0015, 5.0, 3));
 
     private static IndicatorSnapshot snapshot(double sma, double ema, double roc, double volatility, int samples) {
-        return new IndicatorSnapshot(sma, ema, roc, volatility, 0.2, samples, Instant.now());
+        return IndicatorSnapshot.ofCore(sma, ema, roc, volatility, 0.2, samples, Instant.now());
     }
 
     @Test

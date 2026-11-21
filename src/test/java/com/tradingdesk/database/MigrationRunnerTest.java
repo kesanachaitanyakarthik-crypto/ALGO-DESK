@@ -30,10 +30,10 @@ class MigrationRunnerTest {
     }
 
     @Test
-    void manifestCoversAllFivePlannedVersions() {
+    void manifestCoversAllPlannedVersions() {
         List<MigrationRunner.Migration> migrations = new MigrationRunner(null).availableMigrations();
         List<Integer> versions = migrations.stream().map(MigrationRunner.Migration::version).toList();
-        assertEquals(List.of(1, 2, 3, 4, 5), versions);
+        assertEquals(List.of(1, 2, 3, 4, 5, 6), versions);
     }
 
     @Test

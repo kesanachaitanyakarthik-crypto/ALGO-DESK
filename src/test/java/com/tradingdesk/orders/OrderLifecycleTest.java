@@ -40,7 +40,8 @@ class OrderLifecycleTest {
     }
 
     private static TradeSignal signal(SignalType type) {
-        IndicatorSnapshot indicators = new IndicatorSnapshot(100, 101, 0.01, 0.5, 0.1, 20, Instant.now());
+        IndicatorSnapshot indicators =
+                IndicatorSnapshot.ofCore(100, 101, 0.01, 0.5, 0.1, 20, Instant.now());
         return new TradeSignal(AAPL, type, 0.7, "test", indicators, Instant.now());
     }
 

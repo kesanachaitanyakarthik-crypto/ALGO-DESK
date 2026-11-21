@@ -16,12 +16,16 @@ public class JdbcTradeSignalDao implements TradeSignalDao {
 
     private static final String INSERT = """
             INSERT INTO trading_signals
-                (symbol, signal_type, confidence, rationale, sma, ema, roc, volatility, imbalance, generated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (symbol, signal_type, confidence, rationale, sma, ema, roc, volatility, imbalance,
+                 generated_at, rsi, macd, macd_signal, macd_histogram, bollinger_upper,
+                 bollinger_middle, bollinger_lower, atr, stochastic_k, stochastic_d, vwap)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
     private static final String FIND_RECENT = """
-            SELECT symbol, signal_type, confidence, rationale, sma, ema, roc, volatility, imbalance, generated_at
+            SELECT symbol, signal_type, confidence, rationale, sma, ema, roc, volatility, imbalance,
+                   generated_at, rsi, macd, macd_signal, macd_histogram, bollinger_upper,
+                   bollinger_middle, bollinger_lower, atr, stochastic_k, stochastic_d, vwap
             FROM trading_signals
             ORDER BY generated_at DESC, signal_id DESC
             LIMIT ?
@@ -77,6 +81,17 @@ public class JdbcTradeSignalDao implements TradeSignalDao {
         statement.setDouble(8, signal.indicators().rollingVolatility());
         statement.setDouble(9, signal.indicators().orderBookImbalance());
         JdbcSupport.setInstant(statement, 10, signal.generatedAt());
+        statement.setDouble(11, signal.indicators().rsi());
+        statement.setDouble(12, signal.indicators().macd());
+        statement.setDouble(13, signal.indicators().macdSignal());
+        statement.setDouble(14, signal.indicators().macdHistogram());
+        statement.setDouble(15, signal.indicators().bollingerUpper());
+        statement.setDouble(16, signal.indicators().bollingerMiddle());
+        statement.setDouble(17, signal.indicators().bollingerLower());
+        statement.setDouble(18, signal.indicators().atr());
+        statement.setDouble(19, signal.indicators().stochasticK());
+        statement.setDouble(20, signal.indicators().stochasticD());
+        statement.setDouble(21, signal.indicators().vwap());
     }
 
     @Override
@@ -99,7 +114,18 @@ public class JdbcTradeSignalDao implements TradeSignalDao {
                                     resultSet.getDouble("volatility"),
                                     resultSet.getDouble("imbalance"),
                                     0,
-                                    JdbcSupport.getInstant(resultSet, "generated_at")),
+                                    JdbcSupport.getInstant(resultSet, "generated_at"),
+                                    resultSet.getDouble("rsi"),
+                                    resultSet.getDouble("macd"),
+                                    resultSet.getDouble("macd_signal"),
+                                    resultSet.getDouble("macd_histogram"),
+                                    resultSet.getDouble("bollinger_upper"),
+                                    resultSet.getDouble("bollinger_middle"),
+                                    resultSet.getDouble("bollinger_lower"),
+                                    resultSet.getDouble("atr"),
+                                    resultSet.getDouble("stochastic_k"),
+                                    resultSet.getDouble("stochastic_d"),
+                                    resultSet.getDouble("vwap")),
                             JdbcSupport.getInstant(resultSet, "generated_at")));
                 }
             }

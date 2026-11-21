@@ -10,3 +10,4 @@
 3|strategy_backtest|db/migration/V3__strategy_backtest.sql
 4|market_data|db/migration/V4__market_data.sql
 5|exchange|db/migration/V5__exchange.sql
+6|advanced_indicators|db/migration/V6__advanced_indicators.sql
