@@ -129,8 +129,24 @@ public class ShellController {
         refreshTimeline.setCycleCount(Animation.INDEFINITE);
         refreshTimeline.play();
 
-        navigateTo(ViewId.DASHBOARD);
+        navigateTo(initialView());
         tick();
+    }
+
+    /**
+     * The view to open first. Defaults to the dashboard; {@code -Dtd.startView=SYSTEM} opens another
+     * screen, which is useful for demos and for verifying a specific screen deterministically.
+     */
+    private ViewId initialView() {
+        String requested = System.getProperty("td.startView");
+        if (requested != null && !requested.isBlank()) {
+            try {
+                return ViewId.valueOf(requested.trim().toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                // Fall through to the default rather than failing to start.
+            }
+        }
+        return ViewId.DASHBOARD;
     }
 
     // ------------------------------------------------------------------ branding
@@ -234,10 +250,12 @@ public class ShellController {
             return new RiskController();
         }
         if (type == AnalyticsController.class) {
-            return new AnalyticsController(snapshotBuilder);
+            AnalyticsController analytics = new AnalyticsController(snapshotBuilder);
+            analytics.attachService(tradingService);
+            return analytics;
         }
         if (type == SystemController.class) {
-            return new SystemController();
+            return new SystemController(tradingService);
         }
         if (type == AboutController.class) {
             return new AboutController(tradingService);

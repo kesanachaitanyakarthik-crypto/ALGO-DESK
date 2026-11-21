@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
@@ -14,13 +17,50 @@
             fitToWidth="true" styleClass="view-scroll">
 
     <VBox styleClass="view-root">
+
         <VBox styleClass="card">
             <HBox styleClass="card-header">
-                <Label text="OPEN ORDERS" styleClass="card-title"/>
+                <Label text="PLACE VIRTUAL ORDER" styleClass="card-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="paperAccountLabel" text="" styleClass="card-hint"/>
+            </HBox>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <ComboBox fx:id="orderSymbol" prefWidth="130"/>
+                <ComboBox fx:id="orderSide" prefWidth="90"/>
+                <ComboBox fx:id="orderKind" prefWidth="130"/>
+                <TextField fx:id="orderQuantity" promptText="Qty" prefWidth="80"/>
+                <TextField fx:id="orderPrice" promptText="Price" prefWidth="100"/>
+                <Button text="SUBMIT" onAction="#onPlaceOrder" styleClass="btn-ghost"/>
+                <Label fx:id="orderResultLabel" text="" styleClass="card-hint" wrapText="true"
+                       maxWidth="Infinity"/>
+            </HBox>
+            <Label text="All orders execute against virtual funds only. Simulated slippage, fees and partial fills apply."
+                   styleClass="card-hint" wrapText="true"/>
+        </VBox>
+
+        <VBox styleClass="card">
+            <Label text="PAPER ORDERS (VIRTUAL)" styleClass="card-title"/>
+            <TableView fx:id="paperTable" prefHeight="200">
+                <columns>
+                    <TableColumn fx:id="paperSymbolColumn" text="SYMBOL" prefWidth="110"/>
+                    <TableColumn fx:id="paperSideColumn" text="SIDE" prefWidth="80"/>
+                    <TableColumn fx:id="paperKindColumn" text="TYPE" prefWidth="110"/>
+                    <TableColumn fx:id="paperQtyColumn" text="QTY" prefWidth="70"/>
+                    <TableColumn fx:id="paperFilledColumn" text="FILLED" prefWidth="80"/>
+                    <TableColumn fx:id="paperAvgColumn" text="AVG PRICE" prefWidth="110"/>
+                    <TableColumn fx:id="paperStatusColumn" text="STATUS" prefWidth="130"/>
+                    <TableColumn fx:id="paperReasonColumn" text="REASON" prefWidth="220"/>
+                </columns>
+            </TableView>
+        </VBox>
+
+        <VBox styleClass="card">
+            <HBox styleClass="card-header">
+                <Label text="OPEN ORDERS (AUTOMATED SIGNALS)" styleClass="card-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Label fx:id="summaryLabel" text="" styleClass="card-hint"/>
             </HBox>
-            <TableView fx:id="openTable" prefHeight="160" >
+            <TableView fx:id="openTable" prefHeight="140">
                 <columns>
                     <TableColumn fx:id="openIdColumn" text="ORDER" prefWidth="110"/>
                     <TableColumn fx:id="openSymbolColumn" text="SYMBOL" prefWidth="130"/>
@@ -33,7 +73,7 @@
 
         <VBox styleClass="card">
             <Label text="ORDER HISTORY" styleClass="card-title"/>
-            <TableView fx:id="historyTable" prefHeight="380" >
+            <TableView fx:id="historyTable" prefHeight="240">
                 <columns>
                     <TableColumn fx:id="historySymbolColumn" text="SYMBOL" prefWidth="120"/>
                     <TableColumn fx:id="historySideColumn" text="SIDE" prefWidth="90"/>

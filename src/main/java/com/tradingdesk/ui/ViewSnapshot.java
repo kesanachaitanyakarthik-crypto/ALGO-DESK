@@ -25,8 +25,50 @@ public record ViewSnapshot(
         OrderSummary orderSummary,
         SystemStats system,
         IndicatorView indicators,
-        List<String> logs
+        List<String> logs,
+        String marketDataStatus,
+        PaperTradingView paper,
+        PerformanceView performance
 ) {
+
+    /** Paper trading account and orders, for the Orders screen. */
+    public record PaperTradingView(
+            String accountId,
+            String cash,
+            String usedMargin,
+            String equity,
+            String realizedPnl,
+            String openOrders,
+            List<PaperOrderRow> orders
+    ) {
+        public PaperTradingView {
+            orders = List.copyOf(orders);
+        }
+    }
+
+    /** One paper order row. */
+    public record PaperOrderRow(
+            String id,
+            String symbol,
+            String side,
+            String kind,
+            String quantity,
+            String filled,
+            String averagePrice,
+            String status,
+            String reason
+    ) {
+    }
+
+    /** High-frequency instrumentation: percentiles and resource usage. */
+    public record PerformanceView(
+            String p50Latency,
+            String p95Latency,
+            String p99Latency,
+            String cpuLoad,
+            long eventsRejected
+    ) {
+    }
 
     /** Portfolio figures, formatted for display. */
     public record PortfolioView(
@@ -99,7 +141,13 @@ public record ViewSnapshot(
             String volatility,
             String imbalance,
             int samples,
-            boolean reliable
+            boolean reliable,
+            String rsi,
+            String macd,
+            String bollinger,
+            String atr,
+            String stochastic,
+            String vwap
     ) {
     }
 }

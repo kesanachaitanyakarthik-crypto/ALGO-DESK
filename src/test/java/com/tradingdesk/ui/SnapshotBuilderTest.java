@@ -234,5 +234,9 @@ class SnapshotBuilderTest {
             return "ok";
         }
         @Override public String runStressTest() { return "no stress"; }
+        @Override public List<com.tradingdesk.service.StrategyComparisonRow> strategyComparison() {
+            return List.of();
+        }
+        @Override public String historicalDataSource() { return "unavailable (test)"; }
     }
 }

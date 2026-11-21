@@ -93,4 +93,13 @@ public interface TradingService {
 
     /** Runs a stress test and returns its measured summary line. */
     String runStressTest();
+
+    /**
+     * Backtests every strategy over the same historical window and returns measured metrics.
+     * Returns an empty list when no historical data is available.
+     */
+    List<StrategyComparisonRow> strategyComparison();
+
+    /** Source of the historical data used for backtesting, for honest labelling. */
+    String historicalDataSource();
 }

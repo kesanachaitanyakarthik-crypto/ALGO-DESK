@@ -172,6 +172,22 @@ public class MarketDataSourceSupervisor implements AutoCloseable {
         return lastTickAtMillis == 0 ? -1L : System.currentTimeMillis() - lastTickAtMillis;
     }
 
+    /**
+     * Historical candles for backtesting.
+     *
+     * @return candles from the real provider, or an empty list when offline
+     */
+    public List<com.tradingdesk.marketdata.Candle> history(String symbol, String interval, int limit) {
+        return restProvider
+                .map(provider -> provider.history(symbol, interval, limit))
+                .orElse(List.of());
+    }
+
+    /** True when real historical data is obtainable. */
+    public boolean hasHistoricalSource() {
+        return restProvider.isPresent();
+    }
+
     /** One line for the status bar, always naming the real source. */
     public String display() {
         return activeMode.label() + " · " + statusDetail;

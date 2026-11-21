@@ -12,6 +12,8 @@ import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -33,6 +35,10 @@ public class AnalyticsController implements RoutedView {
 
     private final SnapshotBuilder snapshotBuilder;
 
+    /** Optional service reference so backtests can run on real historical data. */
+    private com.tradingdesk.service.TradingService tradingService;
+    private boolean comparisonLoaded;
+
     @FXML private ComboBox<String> symbolSelector;
     @FXML private LineChart<String, Number> indicatorChart;
     @FXML private CategoryAxis indicatorXAxis;
@@ -42,8 +48,33 @@ public class AnalyticsController implements RoutedView {
     @FXML private Label rocLabel;
     @FXML private Label volatilityLabel;
     @FXML private Label imbalanceLabel;
+    @FXML private Label rsiLabel;
+    @FXML private Label macdLabel;
+    @FXML private Label bollingerLabel;
+    @FXML private Label atrLabel;
+    @FXML private Label stochasticLabel;
+    @FXML private Label vwapLabel;
     @FXML private Label sampleLabel;
     @FXML private Label reliabilityLabel;
+
+    @FXML private TableView<StrategyRow> strategyTable;
+    @FXML private TableColumn<StrategyRow, String> strategyNameColumn;
+    @FXML private TableColumn<StrategyRow, String> strategyReturnColumn;
+    @FXML private TableColumn<StrategyRow, String> strategyWinRateColumn;
+    @FXML private TableColumn<StrategyRow, String> strategyDrawdownColumn;
+    @FXML private TableColumn<StrategyRow, String> strategyProfitFactorColumn;
+    @FXML private TableColumn<StrategyRow, String> strategySharpeColumn;
+    @FXML private TableColumn<StrategyRow, String> strategyTradesColumn;
+    @FXML private Label backtestSummaryLabel;
+
+    private final javafx.collections.ObservableList<StrategyRow> strategyRows =
+            javafx.collections.FXCollections.observableArrayList();
+
+    /** One row of the strategy comparison table, pre-formatted from real backtest metrics. */
+    public record StrategyRow(String strategy, String totalReturn, String winRate,
+                              String maxDrawdown, String profitFactor, String sharpe,
+                              String trades) {
+    }
 
     private final XYChart.Series<String, Number> priceSeries = new XYChart.Series<>();
     private final XYChart.Series<String, Number> smaSeries = new XYChart.Series<>();
@@ -58,6 +89,51 @@ public class AnalyticsController implements RoutedView {
 
     public AnalyticsController(SnapshotBuilder snapshotBuilder) {
         this.snapshotBuilder = snapshotBuilder;
+    }
+
+    /** Supplies the service so the backtest comparison can run. */
+    public void attachService(com.tradingdesk.service.TradingService tradingService) {
+        this.tradingService = tradingService;
+    }
+
+    /**
+     * Runs the strategy comparison off the FX thread, once, when the view first becomes visible.
+     * Metrics displayed are the measured results of that run.
+     */
+    @FXML
+    private void onRunBacktest() {
+        if (tradingService == null || backtestSummaryLabel == null) {
+            return;
+        }
+        backtestSummaryLabel.setText("Running backtest…");
+        javafx.concurrent.Task<java.util.List<com.tradingdesk.service.StrategyComparisonRow>> task =
+                new javafx.concurrent.Task<>() {
+                    @Override
+                    protected java.util.List<com.tradingdesk.service.StrategyComparisonRow> call() {
+                        return tradingService.strategyComparison();
+                    }
+                };
+        task.setOnSucceeded(event -> {
+            var rows = task.getValue();
+            if (rows.isEmpty()) {
+                backtestSummaryLabel.setText(
+                        "No historical data available — " + tradingService.historicalDataSource());
+                return;
+            }
+            java.util.List<StrategyRow> display = new java.util.ArrayList<>(rows.size());
+            for (var row : rows) {
+                display.add(new StrategyRow(row.strategy(), row.totalReturn(), row.winRate(),
+                        row.maxDrawdown(), row.profitFactor(), row.sharpe(), row.trades()));
+            }
+            strategyRows.setAll(display);
+            backtestSummaryLabel.setText("Source: " + tradingService.historicalDataSource());
+            comparisonLoaded = true;
+        });
+        task.setOnFailed(event -> backtestSummaryLabel.setText(
+                "Backtest failed: " + task.getException().getMessage()));
+        Thread thread = new Thread(task, "td-backtest");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     @FXML
@@ -78,6 +154,30 @@ public class AnalyticsController implements RoutedView {
                 render(symbolSelector.getValue());
             }
         });
+
+        bindStrategyTable();
+    }
+
+    /** Wires the strategy comparison table so backtest metrics are displayed, not invented. */
+    private void bindStrategyTable() {
+        if (strategyTable == null) {
+            return;
+        }
+        strategyNameColumn.setCellValueFactory(
+                c -> new javafx.beans.property.SimpleStringProperty(c.getValue().strategy()));
+        strategyReturnColumn.setCellValueFactory(
+                c -> new javafx.beans.property.SimpleStringProperty(c.getValue().totalReturn()));
+        strategyWinRateColumn.setCellValueFactory(
+                c -> new javafx.beans.property.SimpleStringProperty(c.getValue().winRate()));
+        strategyDrawdownColumn.setCellValueFactory(
+                c -> new javafx.beans.property.SimpleStringProperty(c.getValue().maxDrawdown()));
+        strategyProfitFactorColumn.setCellValueFactory(
+                c -> new javafx.beans.property.SimpleStringProperty(c.getValue().profitFactor()));
+        strategySharpeColumn.setCellValueFactory(
+                c -> new javafx.beans.property.SimpleStringProperty(c.getValue().sharpe()));
+        strategyTradesColumn.setCellValueFactory(
+                c -> new javafx.beans.property.SimpleStringProperty(c.getValue().trades()));
+        strategyTable.setItems(strategyRows);
     }
 
     @Override
@@ -90,13 +190,20 @@ public class AnalyticsController implements RoutedView {
         ViewSnapshot.IndicatorView indicators = snapshot.indicators();
         syncSelector(snapshot, indicators.symbol());
 
-        smaLabel.setText(indicators.sma());
-        emaLabel.setText(indicators.ema());
-        rocLabel.setText(indicators.roc());
-        volatilityLabel.setText(indicators.volatility());
-        imbalanceLabel.setText(indicators.imbalance());
         sampleLabel.setText(indicators.samples() + " samples");
         reliabilityLabel.setText(indicators.reliable() ? "Live" : "Warming up");
+
+        setIfPresent(smaLabel, indicators.sma());
+        setIfPresent(emaLabel, indicators.ema());
+        setIfPresent(rocLabel, indicators.roc());
+        setIfPresent(volatilityLabel, indicators.volatility());
+        setIfPresent(imbalanceLabel, indicators.imbalance());
+        setIfPresent(rsiLabel, indicators.rsi());
+        setIfPresent(macdLabel, indicators.macd());
+        setIfPresent(bollingerLabel, indicators.bollinger());
+        setIfPresent(atrLabel, indicators.atr());
+        setIfPresent(stochasticLabel, indicators.stochastic());
+        setIfPresent(vwapLabel, indicators.vwap());
 
         String symbol = indicators.symbol();
         Double price = snapshot.prices().get(symbol);
@@ -152,6 +259,13 @@ public class AnalyticsController implements RoutedView {
                 symbolSelector.getSelectionModel().selectFirst();
             }
             rebuilding = false;
+        }
+    }
+
+    /** Sets a label only when both exist, so optional fields never cause an NPE. */
+    private static void setIfPresent(Label label, String value) {
+        if (label != null && value != null) {
+            label.setText(value);
         }
     }
 

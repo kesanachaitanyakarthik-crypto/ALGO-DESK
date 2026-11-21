@@ -3,9 +3,12 @@
 <?import javafx.scene.chart.CategoryAxis?>
 <?import javafx.scene.chart.LineChart?>
 <?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
@@ -62,6 +65,30 @@
                     <Label text="ORDER BOOK IMBALANCE" styleClass="about-key"/>
                     <Label fx:id="imbalanceLabel" text="-" styleClass="about-value"/>
                 </VBox>
+                <VBox spacing="2">
+                    <Label text="RSI (14)" styleClass="about-key"/>
+                    <Label fx:id="rsiLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="MACD" styleClass="about-key"/>
+                    <Label fx:id="macdLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="BOLLINGER BANDS" styleClass="about-key"/>
+                    <Label fx:id="bollingerLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="ATR (14)" styleClass="about-key"/>
+                    <Label fx:id="atrLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="STOCHASTIC %K / %D" styleClass="about-key"/>
+                    <Label fx:id="stochasticLabel" text="-" styleClass="about-value"/>
+                </VBox>
+                <VBox spacing="2">
+                    <Label text="VWAP" styleClass="about-key"/>
+                    <Label fx:id="vwapLabel" text="-" styleClass="about-value"/>
+                </VBox>
 
                 <Region prefHeight="6"/>
 
@@ -75,5 +102,27 @@
                 </HBox>
             </VBox>
         </GridPane>
+
+        <VBox styleClass="card">
+            <HBox styleClass="card-header">
+                <Label text="STRATEGY BACKTEST COMPARISON" styleClass="card-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="backtestSummaryLabel" text="" styleClass="card-hint"/>
+                <Button text="RUN BACKTEST" onAction="#onRunBacktest" styleClass="btn-ghost"/>
+            </HBox>
+            <TableView fx:id="strategyTable" prefHeight="200">
+                <columns>
+                    <TableColumn fx:id="strategyNameColumn" text="STRATEGY" prefWidth="220"/>
+                    <TableColumn fx:id="strategyReturnColumn" text="RETURN" prefWidth="110"/>
+                    <TableColumn fx:id="strategyWinRateColumn" text="WIN RATE" prefWidth="110"/>
+                    <TableColumn fx:id="strategyDrawdownColumn" text="MAX DD" prefWidth="110"/>
+                    <TableColumn fx:id="strategyProfitFactorColumn" text="PROFIT FACTOR" prefWidth="130"/>
+                    <TableColumn fx:id="strategySharpeColumn" text="SHARPE" prefWidth="100"/>
+                    <TableColumn fx:id="strategyTradesColumn" text="TRADES" prefWidth="90"/>
+                </columns>
+            </TableView>
+            <Label text="Metrics are produced by running each strategy over the same historical window; they are not estimates."
+                   styleClass="card-hint" wrapText="true"/>
+        </VBox>
     </VBox>
 </ScrollPane>

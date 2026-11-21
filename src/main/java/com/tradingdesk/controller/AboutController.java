@@ -10,6 +10,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 
+import java.util.Set;
+
 /**
  * Read-only About/Settings screen: identity, build/stack reference and the live database status.
  *
@@ -44,8 +46,11 @@ public class AboutController implements RoutedView {
         disclaimerValue.setText(SimulationDisclaimer.TEXT);
         runtimeValue.setText(System.getProperty("java.vendor") + " " + System.getProperty("java.version"));
         modeValue.setText("Rule-based signals (MA crossover + momentum) — not a trained ML model");
-        instrumentsValue.setText(String.join(", ", tradingService.availableSymbols()));
-        workersValue.setText(Integer.toString(tradingService.activeWorkerThreads()));
+        // Guard the service: a missing reference must never break FXML loading.
+        if (tradingService != null) {
+            instrumentsValue.setText(String.join(", ", tradingService.availableSymbols()));
+            workersValue.setText(Integer.toString(tradingService.activeWorkerThreads()));
+        }
     }
 
     @Override
@@ -57,8 +62,13 @@ public class AboutController implements RoutedView {
     public void refresh(ViewSnapshot snapshot) {
         dbStatusValue.setText(snapshot.databaseStatus());
         workersValue.setText(Integer.toString(snapshot.system().activeWorkers()));
-        instrumentsValue.setText(String.join(", ", snapshot.prices().keySet().isEmpty()
-                ? tradingService.availableSymbols()
-                : snapshot.prices().keySet()));
+        Set<String> symbols = snapshot.prices().keySet().isEmpty()
+                ? (tradingService == null ? java.util.Set.<String>of() : tradingService.availableSymbols())
+                : snapshot.prices().keySet();
+        instrumentsValue.setText(String.join(", ", symbols));
+        if (modeValue != null) {
+            modeValue.setText("Rule-based strategies plus a trainable logistic-regression "
+                    + "classifier — educational outputs, not investment advice");
+        }
     }
 }

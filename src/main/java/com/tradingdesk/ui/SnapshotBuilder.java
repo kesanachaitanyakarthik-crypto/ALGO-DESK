@@ -83,7 +83,36 @@ public final class SnapshotBuilder {
                         Formatters.percent(stats.rejectionRate())),
                 buildSystem(),
                 buildIndicators(),
-                service.recentLogs(120));
+                service.recentLogs(120),
+                service.marketDataStatus(),
+                buildPaper(),
+                buildPerformance());
+    }
+
+    /** Maps the paper trading view, keeping every figure sourced from the real broker. */
+    private ViewSnapshot.PaperTradingView buildPaper() {
+        var paper = service.paperTrading();
+        List<ViewSnapshot.PaperOrderRow> rows = new ArrayList<>(paper.orders().size());
+        for (var row : paper.orders()) {
+            rows.add(new ViewSnapshot.PaperOrderRow(row.id(), row.symbol(), row.side(), row.kind(),
+                    row.quantity(), row.filled(), row.averagePrice(), row.status(), row.reason()));
+        }
+        return new ViewSnapshot.PaperTradingView(paper.accountId(), paper.cash(),
+                paper.usedMargin(), paper.equity(), paper.realizedPnl(),
+                Long.toString(paper.openCount()), rows);
+    }
+
+    private ViewSnapshot.PerformanceView buildPerformance() {
+        double cpu = service.processCpuLoad();
+        String cpuText = cpu < 0.0
+                ? "n/a"
+                : String.format(Locale.ROOT, "%.1f%%", cpu * 100.0);
+        return new ViewSnapshot.PerformanceView(
+                micros(service.p50LatencyMicros()),
+                micros(service.p95LatencyMicros()),
+                micros(service.p99LatencyMicros()),
+                cpuText,
+                service.eventsRejected());
     }
 
     private List<MarketRow> buildMarkets(Map<String, Double> prices, Map<String, Long> volumes) {
@@ -197,7 +226,8 @@ public final class SnapshotBuilder {
     private ViewSnapshot.IndicatorView buildIndicators() {
         String symbol = analyticsSymbol();
         if (symbol == null) {
-            return new ViewSnapshot.IndicatorView("-", "-", "-", "-", "-", "-", 0, false);
+            return new ViewSnapshot.IndicatorView("-", "-", "-", "-", "-", "-", 0, false,
+                    "-", "-", "-", "-", "-", "-");
         }
         IndicatorSnapshot snapshot = service.indicatorsFor(symbol);
         return new ViewSnapshot.IndicatorView(
@@ -208,7 +238,19 @@ public final class SnapshotBuilder {
                 Formatters.price(snapshot.rollingVolatility()),
                 signedPercent(snapshot.orderBookImbalance() * 100.0),
                 snapshot.sampleCount(),
-                snapshot.hasSufficientData());
+                snapshot.hasSufficientData(),
+                snapshot.rsi() > 0.0 ? String.format(Locale.ROOT, "%.2f", snapshot.rsi()) : "-",
+                String.format(Locale.ROOT, "%.5f", snapshot.macd()),
+                snapshot.bollingerUpper() > 0.0
+                        ? Formatters.price(snapshot.bollingerLower()) + " – "
+                                + Formatters.price(snapshot.bollingerUpper())
+                        : "-",
+                snapshot.atr() > 0.0 ? Formatters.price(snapshot.atr()) : "-",
+                snapshot.stochasticK() > 0.0
+                        ? String.format(Locale.ROOT, "%.1f / %.1f",
+                                snapshot.stochasticK(), snapshot.stochasticD())
+                        : "-",
+                snapshot.vwap() > 0.0 ? Formatters.price(snapshot.vwap()) : "-");
     }
 
     static String micros(double micros) {

@@ -393,6 +393,59 @@ public class DefaultTradingService implements TradingService {
         this.marketDataMode = mode;
     }
 
+    @Override
+    public java.util.List<StrategyComparisonRow> strategyComparison() {
+        var supervisor = marketDataSupervisor;
+        if (supervisor == null || !supervisor.hasHistoricalSource()) {
+            return java.util.List.of();
+        }
+        // Use the largest available history so the metrics are meaningful.
+        java.util.List<com.tradingdesk.marketdata.Candle> candles =
+                supervisor.history("BTCUSDT", "1h", 500);
+        if (candles.size() < 60) {
+            return java.util.List.of();
+        }
+
+        java.util.List<com.tradingdesk.model.PriceBar> bars = new java.util.ArrayList<>(candles.size());
+        com.tradingdesk.model.Instrument btc = new com.tradingdesk.model.Instrument(
+                "BTCUSDT", "Bitcoin / USDT", com.tradingdesk.model.InstrumentType.CRYPTO);
+        for (var candle : candles) {
+            bars.add(new com.tradingdesk.model.PriceBar(btc, candle.open(), candle.high(),
+                    candle.low(), candle.close(), (long) candle.volume(), candle.openTime()));
+        }
+
+        var dataset = new com.tradingdesk.backtest.HistoricalDataset("BTCUSDT", bars);
+        var engine = new com.tradingdesk.backtest.BacktestEngine(
+                com.tradingdesk.backtest.BacktestEngine.Config.defaults());
+        var rows = new com.tradingdesk.backtest.BacktestComparison(engine)
+                .compare(new com.tradingdesk.strategy.StrategyRegistry(), dataset);
+
+        java.util.List<StrategyComparisonRow> result = new java.util.ArrayList<>(rows.size());
+        for (var row : rows) {
+            var metrics = row.metrics();
+            result.add(new StrategyComparisonRow(
+                    row.strategyName(),
+                    Formatters.percent(metrics.totalReturnPercent() / 100.0),
+                    Formatters.percent(metrics.winRatePercent() / 100.0),
+                    String.format(java.util.Locale.ROOT, "%.2f%%", metrics.maxDrawdownPercent()),
+                    Double.isInfinite(metrics.profitFactor())
+                            ? "inf"
+                            : String.format(java.util.Locale.ROOT, "%.2f", metrics.profitFactor()),
+                    String.format(java.util.Locale.ROOT, "%.2f", metrics.sharpeRatio()),
+                    Integer.toString(metrics.tradeCount())));
+        }
+        return result;
+    }
+
+    @Override
+    public String historicalDataSource() {
+        var supervisor = marketDataSupervisor;
+        if (supervisor == null || !supervisor.hasHistoricalSource()) {
+            return "unavailable (offline)";
+        }
+        return "Binance public REST · BTCUSDT 1h";
+    }
+
     public void setDatabaseStatus(String status) {
         this.databaseStatus = status;
     }
