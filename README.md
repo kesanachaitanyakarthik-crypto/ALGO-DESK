@@ -141,13 +141,12 @@ Beyond the original simulation, the project now includes four additional layers.
   `/api/v3/ticker/bookTicker`) — no API key — with request throttling and an OHLCV cache.
   `SimulatedMarketDataProvider` exposes the existing simulator through the same contract.
 
-### Exchange integration (`com.tradingdesk.exchange`)
+### Exchange integration — removed
 
-- `ExchangeClient` SPI, `MockExchange` (used by every test), `LiveSafetyLimits`.
-- `ExchangeCredentials` reads `EXCHANGE_API_KEY` / `EXCHANGE_API_SECRET` from the environment only,
-  masks itself in `toString()`, and never exposes the secret through a public accessor.
-- `RequestSigner` implements HMAC-SHA256 request signing, verified against published vectors.
-- `TradingModeGuard` is the single authority on live trading (see below).
+The `com.tradingdesk.exchange` package no longer exists. It previously contained `ExchangeClient`,
+`MockExchange`, `ExchangeCredentials`, `RequestSigner` (HMAC-SHA256), `TradingModeGuard`,
+`LiveSafetyLimits` and `LiveTradingDisabledException`. All of it was deleted so that **no
+order-placement code path exists at all** (see [Educational-only scope](#educational-only-scope-no-live-trading-exists)).
 
 ---
 
@@ -317,49 +316,30 @@ The window opens at 1366×768 and is usable down to 1180×700; layouts are verif
 
 ---
 
-## Paper vs Live trading
+## Educational-only scope (no live trading exists)
 
-**Paper is the default and the only mode reachable without deliberate, multi-step action.** No code
-path enables live trading as a side effect of anything else.
+**There is no live-trading mode, no exchange adapter, and no order-placement pathway in this
+codebase.** The `com.tradingdesk.exchange` package — which previously held a live-trading guard,
+`MockExchange`, HMAC request signing and credential handling — has been **removed**, together with
+`TradingModeGuard`, `LiveSafetyLimits`, `EXCHANGE_API_KEY`/`EXCHANGE_API_SECRET` and the
+`-Dtd.live=true` flag.
 
-`TradingModeGuard` requires **all three** of the following, and re-checks them immediately before
-every order:
+`EXCHANGE_API_KEY` and `EXCHANGE_API_SECRET` are no longer read anywhere. Grepping the sources for
+`exchange`, `apiKey`, `apiSecret` or `HmacSHA256` returns zero matches.
 
-1. The JVM was started with `-Dtd.live=true`.
-2. `EXCHANGE_API_KEY` and `EXCHANGE_API_SECRET` are present in the environment.
-3. The operator typed the exact confirmation phrase `ENABLE LIVE TRADING`.
+### What does exist
 
-If any is missing, `activateLive(...)` throws `LiveTradingDisabledException` naming the reason, and
-`diagnostics()` reports each precondition individually.
+- **Read-only public market data.** Only three Binance endpoints are contacted:
+  `/api/v3/time`, `/api/v3/ticker/bookTicker` and `/api/v3/klines`, plus the public market-data
+  WebSocket. No API key is sent, and none is required.
+- **Virtual execution.** `PaperBroker` + `SimulatedExecutionEngine` fill orders against virtual cash
+  with spread, slippage and fees. Every fill is simulated.
 
-### Run in paper mode (default)
+### Why this is safe by construction, not by a guard
 
-Nothing to do — that is the default. No property, no credentials, no confirmation.
-
-### Attempt live mode
-
-```powershell
-$env:EXCHANGE_API_KEY="your-key"
-$env:EXCHANGE_API_SECRET="your-secret"
-# then activate live mode and type: ENABLE LIVE TRADING
-```
-
-This project ships **no adapter that can send a real order** — `MockExchange` is the only
-implementation — so even a fully authorized guard cannot place a real-money order.
-
-### Stop live trading immediately
-
-```java
-guard.killSwitch();
-```
-
-Reverts to paper mode and **permanently** blocks re-activation for the rest of the process;
-re-enabling requires a restart, so a panicked click cannot instantly re-arm trading.
-
-### Live safety limits
-
-`LiveSafetyLimits` enforces maximum order notional, maximum daily loss, maximum open positions and
-duplicate-order prevention, with deliberately small defaults.
+The previous design defended live trading with a three-factor guard. That is weaker than simply not
+having the capability: a guard can be bypassed by a bug, whereas a missing adapter cannot place an
+order at all. Removing the code was the stronger fix.
 
 ---
 
@@ -375,6 +355,7 @@ version in `schema_version`.
 | V3 | `strategies`, `backtest_runs`, `backtest_trades` |
 | V4 | `candles`, `market_data_status` |
 | V5 | `exchange_connections` (metadata only — **no credentials are ever stored**) |
+| V6 | Advanced indicator columns on `trading_signals` (RSI, MACD, Bollinger, ATR, Stochastic, VWAP), all `NOT NULL DEFAULT 0` so existing rows stay valid |
 
 Migrations are **additive by policy**: they create and alter, never drop or truncate, so existing
 records survive. Each runs in its own transaction alongside its version row, and re-running is a

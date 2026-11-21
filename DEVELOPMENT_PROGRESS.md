@@ -5,6 +5,114 @@
 
 ---
 
+## Final verification and stabilization audit
+
+**Status:** Complete. **311 tests, 0 failures, BUILD SUCCESS** (offline).
+**319 with `-Ddb.enabled=true`. 7 network tests pass with `-Dlive.enabled=true`.**
+
+### 1. Live market data — why the GUI fell back to SIMULATED
+
+Three independent causes, all fixed and verified on screen:
+
+| # | Cause | Fix |
+|---|---|---|
+| 1 | `TradingDeskApplication.start()` built the context but **never called `context.start()`**, so `MarketDataSourceSupervisor.start()` was never invoked and the supervisor sat in its initial `SIMULATED` state forever. The headless test passed only because it calls `context.start()` itself. | Market data now starts from the app on a daemon thread. It cannot run on the FX thread because the WebSocket handshake blocks up to 10 s. |
+| 2 | `marketDataStatus()` returned a `String` cached once at attach time, so later reconnects and degradation were invisible to the UI. | Reads through to `supervisor.display()` on every snapshot. |
+| 3 | The watchlist was equity tickers (`AAPL`, `MSFT`, …) while the live feed streams `BTCUSDT`, so a **LIVE badge would have sat above simulated equity prices**. | The instrument universe is now exactly the streamed set. |
+
+Found only by looking at the running window, then fixed:
+
+4. **`STARTING_PRICES` was a positional array paired against `Map.of()` iteration order**, which is
+   unspecified. XRP was handed BTC's price level and the UI showed **`+77,301%`**. Prices are now
+   resolved per symbol from an ordered `LinkedHashMap`.
+5. **The simulator kept publishing while live data streamed**, mixing generated prices with real ones
+   in the same cache. Synthetic publishing is now muted whenever a real source is active, and is
+   re-enabled automatically if live degrades — so a reconnect re-seeds the display.
+6. **The status-bar badge was a hardcoded `SIMULATION MODE` label.** It now shows actual provenance
+   (`LIVE WebSocket · Streaming 5 symbols`) and is green only when real data is in use.
+
+**Verified on screen** (screenshot, 1920×1080):
+
+- Badge: `LIVE WebSocket · Streaming 5 symbols` (green)
+- Real Binance prices: BTC 59,859.23 · ETH 1,681.49 · BNB 546.11 · SOL 70.42 · XRP 0.9237
+- 22,108 events processed at 5,845/s, p50 9.5 µs, queue drained 13,318 → 0
+- Disclaimer strip present; MySQL badge honest (`In-memory only (MySQL not configured)`)
+
+**Headless proof** (`LiveMarketDataPipelineIntegrationTest`): `LIVE WebSocket`, 11–32 real ticks,
+duplicates suppressed, 53 events processed end-to-end — live ticks traverse the bounded queue and
+worker pool rather than bypassing them.
+
+**Offline proof** (`OfflineFallbackTest`): with network disabled the app still starts, still processes
+events, and reports `SIMULATED` — never live.
+
+### 2. Educational-only scope — verified
+
+- `com/tradingdesk/exchange/` — **removed** (directory absent).
+- Grep for `com.tradingdesk.exchange`, `EXCHANGE_API_KEY`, `EXCHANGE_SECRET`, `HmacSHA256`,
+  `apiKey`, `apiSecret` across all main and test sources: **zero matches**.
+- Only outbound endpoints: `https://api.binance.com` (`/api/v3/time`, `/api/v3/ticker/bookTicker`,
+  `/api/v3/klines`) and `wss://stream.binance.com:9443/stream?streams=`. **No `/order` endpoint, no
+  signing, no credentials, no deposit/withdraw path.**
+- The word "post" appears only as `postMargin` / `postCollateral` in the paper account (collateral
+  accounting, not HTTP POST).
+- Paper trading, virtual portfolio and simulated execution untouched.
+
+### 3. Benchmark validation — resolved
+
+The 99 µs and 0.1 µs figures measured **different things**:
+
+| Run | processing p50 | queue-wait p50 | end-to-end p50 |
+|---|---|---|---|
+| No-op workload (reproduces the 0.1 µs figure) | **0.10 µs** | 133.30 µs | **133.40 µs** |
+| Real per-event work, 4 prod / 4 workers, q=512 | 0.90 µs | 528.70 µs | 529.70 µs |
+| Real work, 8 prod / 2 workers, q=64 (saturated) | 0.80 µs | 74.20 µs | 75.00 µs |
+| Real work, 2 prod / 8 workers, q=4096 (no drops) | 0.50 µs | 993.10 µs | 993.60 µs |
+
+The 0.1–0.6 µs numbers were **processing-only on a no-op**, i.e. dequeue overhead. The live figure
+(~9.5 µs GUI, 99–124 µs in the headless harness) is end-to-end through indicators and prediction.
+They were never comparable, and `StressReport` now carries its `latencyScope` string so a report is
+always self-describing. All timing uses `System.nanoTime()`; boundaries are publish / dequeue /
+work-complete.
+
+### 4. ML validation — corrected downwards
+
+| Metric | Value |
+|---|---|
+| Train / test samples | 686 / 294 |
+| Training accuracy | 43.15% |
+| **Test accuracy** | **22.45%** |
+| Majority-class baseline | 23.13% |
+| BUY / SELL / HOLD recall | 0.094 / 0.014 / 0.824 |
+
+Chronological split, training-only standardisation and no look-ahead are all intact and unit-tested.
+**The model does not beat the majority-class baseline.** An earlier claim of 30.3% was stale; the same
+test reproduces 22.45% on three consecutive runs. It is labelled experimental and is **not** a
+profitable strategy; hyper-parameters were deliberately not tuned against the test set, because that
+is the leakage the brief forbids.
+
+### 5. Final regression
+
+| Command | Executed | Failures |
+|---|---|---|
+| `mvn clean test` | 311 | 0 |
+| `mvn clean test -Ddb.enabled=true` (+14 MySQL) | 319 | 0 |
+| `-Dlive.enabled=true` (network tests) | 7 | 0 |
+| `ScreenFxmlLoadTest` (all nine screens load) | 5 | 0 |
+
+Manually verified in the running app: START, STOP, RESET (with confirmation), all nine nav routes,
+price chart, signals table, order placement, risk rejects, offline start and simulated fallback.
+
+### 6. Remaining limitations
+
+- **ML has no demonstrated edge** (above). It is a complete leak-free pipeline, not a trading system.
+- A `Map.of()` ordering bug was caught; other positional pairings should be assumed fragile.
+- CPU load is JVM-process load, not system-wide.
+- Charts use `LineChart` overlays, not bespoke candlestick controls (OHLCV data is available).
+- The GUI reaches LIVE when Binance is reachable from the desktop JVM; behind a restrictive
+  corporate proxy it degrades to SIMULATED and says so, which is the correct behaviour.
+
+---
+
 ## PPT alignment and final integration
 
 **Status:** Complete. **304 tests, 0 failures, BUILD SUCCESS.**
@@ -168,18 +276,25 @@ New package `com.tradingdesk.paper`: `PaperAccount`, `WorkingOrder`, `OrderLifec
 - **Verified against the live Binance API**: 4/4 integration tests passed, fetching real BTCUSDT
   candles and a real quote.
 
-### Phase 4 — Exchange integration (safely gated)
+### Phase 4 — Exchange integration (SUPERSEDED — removed)
+
+> **Historical entry.** This entire package has since been **deleted**, because the mandate moved to
+> an educational-only simulation with no real-order pathway of any kind. `com.tradingdesk.exchange`,
+> `TradingModeGuard`, `LiveSafetyLimits`, `RequestSigner`, `ExchangeCredentials` and `MockExchange` no
+> longer exist, and no source file references `EXCHANGE_API_KEY`/`EXCHANGE_API_SECRET`. Guarding live
+> trading with a flag was replaced by not having live trading at all. The notes below describe what
+> was built at the time.
 
 - `com.tradingdesk.exchange`: `ExchangeClient`, `MockExchange`, `ExchangeBalance/Position/Order`,
   `LiveSafetyLimits`, `ExchangeCredentials`, `RequestSigner`, `TradingModeGuard`, `LiveTradingDisabledException`.
-- Live trading demands all three of `-Dtd.live=true`, environment credentials, and the exact phrase
-  `ENABLE LIVE TRADING`; each is re-checked before every order. `killSwitch()` permanently reverts to
-  paper for the process.
-- Credentials come from the environment only, are masked in `toString()`, and the secret has no
+- Live trading demanded all three of `-Dtd.live=true`, environment credentials, and the exact phrase
+  `ENABLE LIVE TRADING`; each was re-checked before every order. `killSwitch()` permanently reverted
+  to paper for the process.
+- Credentials came from the environment only, were masked in `toString()`, and the secret had no
   public accessor.
-- `RequestSigner` implements HMAC-SHA256 verified against a published vector.
-- **No adapter can send a real order.** `MockExchange` is the sole implementation; it is a sandbox
-  with failure injection and rate-limit simulation, and it is what the tests exercise.
+- `RequestSigner` implemented HMAC-SHA256 verified against a published vector.
+- **No adapter could send a real order.** `MockExchange` was the sole implementation; it was a sandbox
+  with failure injection and rate-limit simulation, and it is what the tests exercised.
 
 ### Database
 
