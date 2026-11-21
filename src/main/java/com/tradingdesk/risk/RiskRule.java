@@ -5,7 +5,10 @@ public enum RiskRule {
     MAX_POSITION_SIZE("Maximum position size"),
     DAILY_MAX_LOSS("Daily maximum loss"),
     PRICE_DEVIATION("Price deviation"),
-    DUPLICATE_ORDER("Duplicate order");
+    DUPLICATE_ORDER("Duplicate order"),
+    INSUFFICIENT_BALANCE("Insufficient balance"),
+    MAX_OPEN_POSITIONS("Maximum open positions"),
+    MAX_DAILY_ORDER_COUNT("Maximum daily order count");
 
     private final String label;
 

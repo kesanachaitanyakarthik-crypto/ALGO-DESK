@@ -15,6 +15,8 @@ public interface Persistence {
 
     SchemaMigrator migrator();
 
+    MigrationRunner migrationRunner();
+
     InstrumentDao instruments();
 
     MarketEventDao marketEvents();

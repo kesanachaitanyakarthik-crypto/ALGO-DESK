@@ -1,0 +1,12 @@
+# Migration manifest.
+#
+# Format: <version>|<name>|<classpath resource>
+# Versions are applied in ascending order; applied versions are recorded in schema_version.
+# Policy: migrations are additive. They may CREATE or ALTER, but never DROP or TRUNCATE,
+# so existing rows survive every upgrade.
+
+1|baseline|db/migration/V1__baseline.sql
+2|paper_trading|db/migration/V2__paper_trading.sql
+3|strategy_backtest|db/migration/V3__strategy_backtest.sql
+4|market_data|db/migration/V4__market_data.sql
+5|exchange|db/migration/V5__exchange.sql

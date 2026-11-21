@@ -21,6 +21,7 @@ public class MySqlPersistence implements Persistence {
 
     private final DatabaseConnection database;
     private final SchemaMigrator migrator;
+    private final MigrationRunner migrationRunner;
     private final InstrumentDao instruments;
     private final MarketEventDao marketEvents;
     private final TradeSignalDao signals;
@@ -33,6 +34,7 @@ public class MySqlPersistence implements Persistence {
     public MySqlPersistence(DatabaseConfig config) {
         this.database = new DatabaseConnection(config);
         this.migrator = new SchemaMigrator(database);
+        this.migrationRunner = new MigrationRunner(database);
         InstrumentDao instrumentDao = new JdbcInstrumentDao(database);
         InstrumentResolver resolver = new InstrumentResolver(instrumentDao);
         this.instruments = instrumentDao;
@@ -48,6 +50,7 @@ public class MySqlPersistence implements Persistence {
     public static MySqlPersistence connect() {
         MySqlPersistence persistence = new MySqlPersistence(DatabaseConfig.load());
         persistence.migrator().migrate();
+        persistence.migrationRunner().migrate();
         return persistence;
     }
 
@@ -59,6 +62,11 @@ public class MySqlPersistence implements Persistence {
     @Override
     public SchemaMigrator migrator() {
         return migrator;
+    }
+
+    @Override
+    public MigrationRunner migrationRunner() {
+        return migrationRunner;
     }
 
     @Override
