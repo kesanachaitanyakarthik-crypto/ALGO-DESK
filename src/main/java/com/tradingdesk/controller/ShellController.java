@@ -96,6 +96,7 @@ public class ShellController {
     @FXML private Label statusQueue;
     @FXML private Label statusWorkers;
     @FXML private Label statusLatency;
+    @FXML private Label dataSourceTag;
 
     private Timeline refreshTimeline;
     private ViewId activeView;
@@ -400,6 +401,18 @@ public class ShellController {
         statusQueue.setText("queue " + stats.queueDepth());
         statusWorkers.setText("workers " + stats.activeWorkers());
         statusLatency.setText("latency " + stats.averageLatency());
+
+        // Provenance: the badge names the source actually in use, never a generic "simulation" label.
+        if (dataSourceTag != null) {
+            String status = snapshot.marketDataStatus();
+            dataSourceTag.setText(status == null || status.isBlank() ? "DATA SOURCE" : status);
+            dataSourceTag.getStyleClass().removeAll(
+                    "status-tag-live", "status-tag-simulated");
+            boolean live = status != null
+                    && (status.startsWith("LIVE") || status.startsWith("DELAYED")
+                            || status.startsWith("HISTORICAL"));
+            dataSourceTag.getStyleClass().add(live ? "status-tag-live" : "status-tag-simulated");
+        }
     }
 
     private void setDatabaseIndicator() {

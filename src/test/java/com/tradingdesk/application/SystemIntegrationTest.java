@@ -45,8 +45,11 @@ class SystemIntegrationTest {
             assertTrue(waitUntil(() -> !service.recentSignals(1).isEmpty(), Duration.ofSeconds(15)),
                     "prediction engine should emit signals once history is sufficient");
 
-            assertTrue(service.latestPrices().keySet().containsAll(
-                            java.util.List.of("AAPL", "MSFT", "GOOG", "AMZN", "NVDA")),
+            // The instrument universe is the streamed set, so live ticks and simulated ticks update
+            // the same rows the screens render.
+            assertEquals(java.util.Set.of("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"),
+                    service.availableSymbols());
+            assertTrue(service.latestPrices().keySet().containsAll(service.availableSymbols()),
                     "all five simulator symbols should publish prices");
 
             assertTrue(service.activeWorkerThreads() > 0, "worker threads must be active");

@@ -56,14 +56,23 @@ public final class ApplicationContext implements AutoCloseable {
     private static final int WINDOW_SIZE = 20;
     private static final int ROC_PERIOD = 5;
     private static final long SIGNAL_COOLDOWN_MILLIS = 250L;
+    /** Simulator fallback levels, keyed by symbol so no positional pairing can drift. */
+    private static final java.util.Map<String, Double> STARTING_PRICES =
+            com.tradingdesk.marketdata.LiveTickAdapter.defaultMapping().keySet().stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            symbol -> symbol,
+                            com.tradingdesk.marketdata.LiveTickAdapter::fallbackPrice,
+                            (a, b) -> a,
+                            java.util.LinkedHashMap::new));
 
     private final ExecutorManager executors;
     private final MarketEventQueue<MarketEvent> queue = new MarketEventQueue<>(QUEUE_CAPACITY);
     private final MetricsRegistry metrics = new MetricsRegistry();
     private final WorkerRegistry workers = new WorkerRegistry();
     private final ConcurrentPriceCache<String> prices = new ConcurrentPriceCache<>();
+
     private final List<Instrument> watchlist;
-    private final double[] startingPrices = {189.45, 421.10, 158.22, 183.75, 121.60};
+    private final double[] startingPrices;
 
     private final PortfolioManager portfolioManager;
     private final OrderManagementSystem orderManagementSystem;
@@ -76,6 +85,8 @@ public final class ApplicationContext implements AutoCloseable {
     private final MarketDataSourceSupervisor marketDataSupervisor;
     private final LiveTickAdapter liveTickAdapter;
     private final com.tradingdesk.paper.PaperBroker paperBroker;
+    private final java.util.concurrent.atomic.AtomicBoolean marketDataStart =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
     private volatile boolean closed;
 
     public ApplicationContext(boolean connectToDatabase) {
@@ -90,12 +101,15 @@ public final class ApplicationContext implements AutoCloseable {
         Logging.configure(Level.INFO);
         int workersCount = Math.max(2, Runtime.getRuntime().availableProcessors() - 1);
         this.executors = new ExecutorManager(workersCount);
-        this.watchlist = List.of(
-                new Instrument("AAPL", "Apple Inc.", InstrumentType.EQUITY),
-                new Instrument("MSFT", "Microsoft Corp.", InstrumentType.EQUITY),
-                new Instrument("GOOG", "Alphabet Inc.", InstrumentType.EQUITY),
-                new Instrument("AMZN", "Amazon.com Inc.", InstrumentType.EQUITY),
-                new Instrument("NVDA", "NVIDIA Corp.", InstrumentType.EQUITY));
+        // The instrument universe is exactly the set the live feed subscribes to. Previously the
+        // watchlist was equity tickers (AAPL, MSFT, ...) while the live feed streamed BTCUSDT etc.,
+        // so a LIVE badge sat above simulated equity prices. Streamed symbols are now first-class
+        // instruments, so real ticks update the very rows the screens display.
+        this.watchlist = new java.util.ArrayList<>(LiveTickAdapter.defaultMapping().values());
+        // Resolve each fallback price from its own symbol, so ordering cannot corrupt the pairing.
+        this.startingPrices = watchlist.stream()
+                .mapToDouble(instrument -> STARTING_PRICES.getOrDefault(instrument.symbol(), 100.0))
+                .toArray();
 
         this.persistence = connectToDatabase ? connectPersistence() : null;
 
@@ -135,6 +149,10 @@ public final class ApplicationContext implements AutoCloseable {
                 List.copyOf(LiveTickAdapter.defaultMapping().keySet()),
                 this::onLiveTick,
                 allowNetwork);
+        // The synthetic source is muted whenever real ticks are streaming, and re-enabled if the
+        // live source degrades, so the two never mix in the same price cache.
+        marketDataSupervisor.setModeListener(mode ->
+                runner.setSyntheticPublishingEnabled(!mode.kind().isReal()));
 
         this.tradingService = new DefaultTradingService(
                 runner, processor, executors, metrics, workers, queue,
@@ -254,9 +272,37 @@ public final class ApplicationContext implements AutoCloseable {
 
     public void start() {
         tradingService.start();
-        // Attempt live market data; if it degrades to simulated the UI shows that honestly.
-        MarketDataSourceSupervisor.Mode mode = marketDataSupervisor.start();
-        tradingService.setMarketDataMode(mode.label() + " · " + marketDataSupervisor.statusDetail());
+        startMarketDataAsync();
+    }
+
+    /**
+     * Connects the live market data source without blocking the caller.
+     *
+     * <p>{@code BinanceWebSocketClient.start()} performs the handshake synchronously and can take up
+     * to its 10 s connect timeout, so calling it on the JavaFX Application Thread would freeze the
+     * window. This is why the GUI previously never reached LIVE: it only ever called
+     * {@code tradingService.start()}, which starts the workers and the simulator but not the market
+     * data supervisor, so the supervisor stayed in its initial SIMULATED state forever.
+     */
+    public void startMarketDataAsync() {
+        if (!marketDataStart.compareAndSet(false, true)) {
+            return;
+        }
+        Thread connector = new Thread(() -> {
+            try {
+                MarketDataSourceSupervisor.Mode mode = marketDataSupervisor.start();
+                tradingService.setMarketDataMode(
+                        mode.label() + " · " + marketDataSupervisor.statusDetail());
+                LOGGER.info("Market data source: " + marketDataSupervisor.display());
+            } catch (RuntimeException e) {
+                // The supervisor degrades to SIMULATED by itself; never leave the UI without a state.
+                LOGGER.log(Level.WARNING, "Market data start failed: " + e.getMessage());
+            } finally {
+                marketDataStart.set(false);
+            }
+        }, "td-marketdata-connect");
+        connector.setDaemon(true);
+        connector.start();
     }
 
     public void stop() {

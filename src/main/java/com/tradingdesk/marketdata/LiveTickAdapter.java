@@ -35,14 +35,33 @@ public class LiveTickAdapter {
         this.instrumentsByStreamSymbol = Map.copyOf(instrumentsByStreamSymbol);
     }
 
-    /** Builds the default Binance→Instrument mapping used by the application. */
+    /**
+     * Builds the default Binance→Instrument mapping used by the application.
+     *
+     * <p>Deliberately an ordered map: this mapping seeds the instrument watchlist, and callers pair it
+     * positionally with fallback prices. {@code Map.of} has unspecified iteration order, which
+     * previously paired e.g. XRP with BTC's price level and produced nonsense percentage changes.
+     */
     public static Map<String, Instrument> defaultMapping() {
-        return Map.of(
-                "BTCUSDT", new Instrument("BTCUSDT", "Bitcoin / USDT", InstrumentType.CRYPTO),
-                "ETHUSDT", new Instrument("ETHUSDT", "Ethereum / USDT", InstrumentType.CRYPTO),
-                "BNBUSDT", new Instrument("BNBUSDT", "BNB / USDT", InstrumentType.CRYPTO),
-                "SOLUSDT", new Instrument("SOLUSDT", "Solana / USDT", InstrumentType.CRYPTO),
-                "XRPUSDT", new Instrument("XRPUSDT", "XRP / USDT", InstrumentType.CRYPTO));
+        Map<String, Instrument> mapping = new java.util.LinkedHashMap<>();
+        mapping.put("BTCUSDT", new Instrument("BTCUSDT", "Bitcoin / USDT", InstrumentType.CRYPTO));
+        mapping.put("ETHUSDT", new Instrument("ETHUSDT", "Ethereum / USDT", InstrumentType.CRYPTO));
+        mapping.put("BNBUSDT", new Instrument("BNBUSDT", "BNB / USDT", InstrumentType.CRYPTO));
+        mapping.put("SOLUSDT", new Instrument("SOLUSDT", "Solana / USDT", InstrumentType.CRYPTO));
+        mapping.put("XRPUSDT", new Instrument("XRPUSDT", "XRP / USDT", InstrumentType.CRYPTO));
+        return java.util.Collections.unmodifiableMap(mapping);
+    }
+
+    /** Fallback price level for a symbol, in the same order as {@link #defaultMapping()}. */
+    public static double fallbackPrice(String symbol) {
+        return switch (symbol) {
+            case "BTCUSDT" -> 96_500.0;
+            case "ETHUSDT" -> 3_400.0;
+            case "BNBUSDT" -> 720.0;
+            case "SOLUSDT" -> 195.0;
+            case "XRPUSDT" -> 2.35;
+            default -> 100.0;
+        };
     }
 
     /**

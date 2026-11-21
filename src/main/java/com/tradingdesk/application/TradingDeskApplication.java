@@ -39,6 +39,11 @@ public class TradingDeskApplication extends Application {
         stage.getIcons().add(Branding.windowIcon(64));
         stage.getIcons().add(Branding.windowIcon(32));
         stage.show();
+
+        // Connect the live market data source on a background thread (the WebSocket handshake can
+        // block for up to 10 s), so the window stays responsive and the audit strip can show the
+        // real provenance as soon as it is known.
+        context.startMarketDataAsync();
     }
 
     @Override

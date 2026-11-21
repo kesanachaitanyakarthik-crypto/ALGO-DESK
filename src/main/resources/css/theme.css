@@ -647,6 +647,18 @@
     -fx-padding: 3 7 3 7;
 }
 
+/* Data provenance: green only when real market data is actually in use. */
+.status-tag-live {
+    -fx-text-fill: #2fe08a;
+    -fx-background-color: #0d2419;
+}
+
+/* Amber: no network source, so every price shown is generated locally. */
+.status-tag-simulated {
+    -fx-text-fill: #d9a441;
+    -fx-background-color: #1c1810;
+}
+
 .status-message {
     -fx-text-fill: #6d88a5;
     -fx-font-size: 9.5px;

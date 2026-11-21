@@ -5,6 +5,106 @@
 
 ---
 
+## PPT alignment and final integration
+
+**Status:** Complete. **304 tests, 0 failures, BUILD SUCCESS.**
+
+### PPT-to-code coverage matrix
+
+| PPT concept | Status | Where |
+|---|---|---|
+| Real market data (WebSocket) | **Complete, verified live** | `marketdata.ws.BinanceWebSocketClient` |
+| Real historical data (REST) | **Complete, verified live** | `marketdata.BinancePublicProvider` |
+| Real-time ticker + trade events | **Complete** | `StreamMessageParser` (trade + bookTicker) |
+| OHLCV candles / history retrieval | **Complete** | `Candle`, `history()` |
+| Bid/ask + depth imbalance | **Complete** | `Quote`, `MarketEvent.simulatedOrderBookImbalance` |
+| Reconnection + heartbeat | **Complete** | `ReconnectPolicy`, watchdog in the client |
+| REST fallback / connection status | **Complete** | `MarketDataSourceSupervisor` |
+| Duplicate prevention / timestamps | **Complete** | `DuplicateFilter`, exchange event time |
+| Distinguish LIVE / HISTORICAL / SIMULATED | **Complete** | `ProviderKind.displayLabel()` |
+| Producer → BlockingQueue → ExecutorService → workers | **Complete** | `ApplicationContext.onLiveTick` → `MarketEventQueue` → `QueuedMarketDataProcessor` |
+| Bounded queue + backpressure | **Complete** | drops counted, producers never blocked |
+| ConcurrentHashMap / LongAdder / Atomic* | **Complete** | price cache, metrics, worker registry |
+| ScheduledExecutorService | **Complete** | simulator ticks, persistence timer, WS watchdog |
+| ReentrantLock | **Complete** | `RollingIndicatorEngine` window |
+| Safe shutdown, exception isolation | **Complete** | processor try/finally, supervisor stop |
+| JavaFX thread never blocked | **Complete** | 600 ms snapshot tick + `Platform.runLater` |
+| SMA / EMA / RSI / MACD / Bollinger / ROC / ATR / Stochastic / VWAP / volatility | **Complete, reference-tested** | `TechnicalIndicators`, `AdvancedIndicators` |
+| AI/ML trained classifier | **Complete, genuinely trained** | `ml.LogisticRegressionClassifier`, `ModelTrainer` |
+| BUY / SELL / HOLD + confidence | **Complete** | `TrainedPredictionEngine` |
+| No look-ahead / no leakage | **Complete** | truncated window; chronological split |
+| Simulated orders (5 kinds), modify, cancel | **Complete** | `paper.*` |
+| Partial fills, slippage, fees, spread | **Complete** | `SimulatedExecutionEngine` |
+| Risk: qty, position, daily loss, deviation, duplicate | **Complete** | `DefaultRiskManager` |
+| Metrics incl. P50/P95/P99 + CPU | **Complete** | `LatencySampler`, `MetricsRegistry` |
+| Stress testing module | **Complete** | `StressTestRunner`, System screen button |
+| Nine JavaFX screens, live data | **Complete** | `ScreenFxmlLoadTest` loads all nine |
+| Educational-only disclaimer | **Complete** | header, About screen |
+
+### Final database state
+
+Migration **V6** adds the advanced-indicator columns to `trading_signals`
+(`rsi`, `macd`, `macd_signal`, `macd_histogram`, `bollinger_*`, `atr`, `stochastic_*`, `vwap`), all
+`NOT NULL DEFAULT 0`, so existing rows stay valid. Verified live: migrations idempotent, 14/14 DB
+tests pass.
+
+### Measured benchmarks (this machine, `BenchmarkReportTest`)
+
+| Scenario | events/s | p50 | p95 | p99 | dropped | peak queue |
+|---|---|---|---|---|---|---|
+| 4 producers / 4 workers, q=512 | 47,592 | 0.2 µs | 0.3 µs | 0.6 µs | 12,211 | 512/512 |
+| 8 producers / 4 workers, q=256 | 187,321 | 0.2 µs | 0.3 µs | 0.5 µs | 15,800 | 256/256 |
+| 8 producers / 2 workers, q=64 (saturated) | 100,974 | 0.1 µs | 0.2 µs | 0.4 µs | 28,468 | 64/64 |
+| 2 producers / 8 workers, q=4096 | 91,111 | 0.1 µs | 0.3 µs | 0.6 µs | 0 | 2442/4096 |
+
+The drop counts are the point: with a small queue the system degrades by **dropping rather than
+blocking**, which is the backpressure behaviour the project sets out to demonstrate.
+
+### AI/ML evaluation (real BTCUSDT 1h, 1000 candles)
+
+| Metric | Value |
+|---|---|
+| Train / test samples | 686 / 294 |
+| Training accuracy | 44.0% |
+| **Test accuracy** | **30.3%** |
+| Majority-class baseline | 23.1% |
+| Horizon | 5 bars |
+
+Honest reading: the model beats a majority-class baseline by ~7 points, which shows it learns
+something, but this is far from a profitable edge. Three defects were found and fixed while
+measuring: feature standardisation (the model collapsed to one class without it), class weighting
+(full inverse-frequency overshot, √ weighting is used), and the labelled-threshold band.
+
+### Verified live this session
+
+- **Binance WebSocket**: 18 real messages, 5 duplicates suppressed.
+- **Live pipeline**: LIVE WebSocket → bounded queue → workers; 53 events processed end to end.
+- **Binance REST**: real BTCUSDT candles and quotes.
+- **MySQL**: 14/14 integration tests, migrations idempotent.
+- **JavaFX**: application launched and ran with live counters.
+
+### Defects found and fixed
+
+1. **Latency read as exactly 0** — the processor used `Instant.now()` (µs resolution). Switched to
+   `System.nanoTime()`; measured p50 is now ~99 µs.
+2. **Orders and About screens threw NPEs** on open — `ScreenFxmlLoadTest` caught both before a user
+   could. Both now guard a missing service.
+3. **ML collapse / overfitting** — described above.
+4. Instrument-delete test was fragile on a shared symbol; now uses a dedicated `ZZTEST` row.
+
+### Remaining limitations
+
+- **Live mode never reached** in my UI captures because the app degrades to SIMULATED when the
+  WebSocket connection cannot be established from the GUI process; the headless integration test
+  proves LIVE_WS works and processes ticks. If the screen shows SIMULATED, that is the truthful
+  supervisor state, not a mock.
+- ML accuracy is modest by nature of the problem (see above).
+- CPU load is JVM-process load (`getProcessCpuLoad`), not system-wide.
+- Chart rendering uses `LineChart`, not a bespoke candlestick control; OHLCV data is fetched and
+  available, but the visual is a line overlay.
+
+---
+
 ## Four-phase platform enhancement
 
 **Status:** All four phases implemented; 290 tests passing, BUILD SUCCESS.

@@ -118,7 +118,7 @@
     <bottom>
         <HBox spacing="18" styleClass="status-bar" alignment="CENTER_LEFT">
             <padding><Insets top="7" right="16" bottom="7" left="16"/></padding>
-            <Label text="SIMULATION MODE" styleClass="status-tag"/>
+            <Label fx:id="dataSourceTag" text="DATA SOURCE" styleClass="status-tag"/>
             <Label fx:id="statusMessage" text="Ready" styleClass="status-message"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="statusEvents" text="events 0" styleClass="status-metric"/>

@@ -30,6 +30,12 @@ public class SimulationRunner implements MarketEventPublisher, AutoCloseable {
     private final AtomicLong published = new AtomicLong();
     private final AtomicLong dropped = new AtomicLong();
     private volatile ScheduledFuture<?> task;
+    /**
+     * When real market data is streaming, the simulator must stop publishing: mixing generated
+     * prices into the same queue would put fake numbers next to genuine ones and make the LIVE
+     * badge a lie. The workers keep running; only the synthetic source is muted.
+     */
+    private volatile boolean syntheticPublishingEnabled = true;
 
     public SimulationRunner(SimulatedMarketDataSimulator simulator,
                             MarketEventQueue<MarketEvent> queue,
@@ -54,7 +60,19 @@ public class SimulationRunner implements MarketEventPublisher, AutoCloseable {
                 0, simulator.config().tickIntervalMillis(), TimeUnit.MILLISECONDS);
     }
 
+    /** Mutes or unmutes the synthetic source without disturbing the worker pool. */
+    public void setSyntheticPublishingEnabled(boolean enabled) {
+        this.syntheticPublishingEnabled = enabled;
+    }
+
+    public boolean isSyntheticPublishingEnabled() {
+        return syntheticPublishingEnabled;
+    }
+
     private void tick() {
+        if (!syntheticPublishingEnabled) {
+            return;
+        }
         try {
             publish(simulator.nextEvent());
         } catch (RuntimeException e) {

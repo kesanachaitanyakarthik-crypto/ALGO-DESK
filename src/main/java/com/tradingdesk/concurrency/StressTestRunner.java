@@ -31,18 +31,40 @@ public class StressTestRunner {
             long p95Nanos,
             long p99Nanos,
             long maxQueueDepth,
-            int queueCapacity
+            int queueCapacity,
+            /** What the timing boundaries include, so reports can never be compared unfairly. */
+            String latencyScope,
+            /** Time from publish to dequeue — the queue wait, measured separately. */
+            long queueWaitP50Nanos,
+            /** Time from publish to work complete — queue wait plus processing. */
+            long endToEndP50Nanos
     ) {
         public String summary() {
             return String.format(java.util.Locale.ROOT,
                     "producers %d, workers %d, attempted %d, accepted %d, consumed %d, "
-                            + "dropped %d, %.0f events/s, p50 %.1f us, p95 %.1f us, "
-                            + "p99 %.1f us, peak queue %d/%d",
+                            + "dropped %d, %.0f events/s, processing p50 %.1f us p95 %.1f us "
+                            + "p99 %.1f us, queue-wait p50 %.1f us, end-to-end p50 %.1f us, "
+                            + "peak queue %d/%d [%s]",
                     producers, workers, attempted, accepted, consumed, dropped,
                     throughputPerSecond,
                     p50Nanos / 1_000.0, p95Nanos / 1_000.0, p99Nanos / 1_000.0,
-                    maxQueueDepth, queueCapacity);
+                    queueWaitP50Nanos / 1_000.0, endToEndP50Nanos / 1_000.0,
+                    maxQueueDepth, queueCapacity, latencyScope);
         }
+    }
+
+    /**
+     * The latency this runner measures, stated once so every report is self-describing.
+     *
+     * <p>It is <strong>processing latency only</strong>: the span from dequeuing an item to finishing
+     * the supplied work. It deliberately excludes the time an item spent queued, because with a
+     * saturated bounded queue that wait dominates and would be reported as if it were CPU time.
+     */
+    public static final String PROCESSING_LATENCY_SCOPE =
+            "processing only (dequeue→work done; excludes queue wait)";
+
+    /** A payload plus the moment it was published, so queue wait can be measured honestly. */
+    private record Item(String value, long publishedAtNanos) {
     }
 
     /**
@@ -60,12 +82,14 @@ public class StressTestRunner {
             throw new IllegalArgumentException("all sizes must be positive");
         }
 
-        MarketEventQueue<String> queue = new MarketEventQueue<>(capacity);
-        LatencySampler sampler = new LatencySampler((int) Math.min(65_536, Math.max(1_024, events)));
+        MarketEventQueue<Item> queue = new MarketEventQueue<>(capacity);
+        int samples = (int) Math.min(65_536, Math.max(1_024, events));
+        LatencySampler sampler = new LatencySampler(samples);
+        LatencySampler queueWaitSampler = new LatencySampler(samples);
+        LatencySampler endToEndSampler = new LatencySampler(samples);
         AtomicLong dropped = new AtomicLong();
         AtomicLong consumed = new AtomicLong();
         AtomicLong peakDepth = new AtomicLong();
-        AtomicLong totalLatency = new AtomicLong();
 
         ExecutorService consumerPool = Executors.newFixedThreadPool(workers);
         ExecutorService producerPool = Executors.newFixedThreadPool(producers);
@@ -78,7 +102,7 @@ public class StressTestRunner {
             consumerPool.submit(() -> {
                 try {
                     while (true) {
-                        String item;
+                        Item item;
                         try {
                             item = queue.poll(100, TimeUnit.MILLISECONDS);
                         } catch (InterruptedException e) {
@@ -91,15 +115,17 @@ public class StressTestRunner {
                             }
                             continue;
                         }
-                        long begin = System.nanoTime();
+                        // Three separate boundaries: dequeue, processing, completion.
+                        long dequeuedAt = System.nanoTime();
+                        queueWaitSampler.record(Math.max(0L, dequeuedAt - item.publishedAtNanos()));
                         try {
                             work.get();
                         } catch (RuntimeException ignored) {
                             // A failing item must not stop the consumer.
                         }
-                        long elapsed = System.nanoTime() - begin;
-                        sampler.record(elapsed);
-                        totalLatency.addAndGet(elapsed);
+                        long completedAt = System.nanoTime();
+                        sampler.record(completedAt - dequeuedAt);
+                        endToEndSampler.record(completedAt - item.publishedAtNanos());
                         consumed.incrementAndGet();
                     }
                 } finally {
@@ -113,7 +139,7 @@ public class StressTestRunner {
             producerPool.submit(() -> {
                 try {
                     for (long i = 0; i < events; i++) {
-                        String item = "p" + producerId + "-" + i;
+                        Item item = new Item("p" + producerId + "-" + i, System.nanoTime());
                         if (!queue.offer(item)) {
                             // Backpressure: the queue is full, so this event is deliberately dropped
                             // and counted rather than blocking the producer.
@@ -154,7 +180,10 @@ public class StressTestRunner {
                 sampler.p95(),
                 sampler.p99(),
                 peakDepth.get(),
-                capacity);
+                capacity,
+                PROCESSING_LATENCY_SCOPE,
+                queueWaitSampler.p50(),
+                endToEndSampler.p50());
     }
 
     /** Convenience: a small, fast run suitable for a UI button. */

@@ -56,6 +56,19 @@ public class MarketDataSourceSupervisor implements AutoCloseable {
     private volatile BinanceWebSocketClient socketClient;
     private volatile String statusDetail = "Starting";
     private volatile long lastTickAtMillis;
+    private volatile java.util.function.Consumer<Mode> modeListener = mode -> { };
+
+    /** Registers a listener told about every achieved mode, including later degradation. */
+    public void setModeListener(java.util.function.Consumer<Mode> listener) {
+        this.modeListener = listener == null ? mode -> { } : listener;
+        modeListener.accept(activeMode);
+    }
+
+    private void applyMode(Mode mode, String detail) {
+        this.activeMode = mode;
+        this.statusDetail = detail;
+        modeListener.accept(mode);
+    }
 
     public MarketDataSourceSupervisor(List<String> symbols, Consumer<StreamMessage> onLiveTick,
                                       boolean allowNetwork) {
@@ -80,20 +93,17 @@ public class MarketDataSourceSupervisor implements AutoCloseable {
         }
 
         if (restProvider.isPresent() && connectSocket()) {
-            activeMode = Mode.LIVE_WS;
-            statusDetail = "Streaming " + symbols.size() + " symbols";
+            applyMode(Mode.LIVE_WS, "Streaming " + symbols.size() + " symbols");
             return activeMode;
         }
 
         if (restProvider.isPresent() && restProvider.get().connect()) {
-            activeMode = Mode.LIVE_REST;
-            statusDetail = "WebSocket unavailable; using REST";
+            applyMode(Mode.LIVE_REST, "WebSocket unavailable; using REST");
             LOGGER.info("Market data degraded to " + activeMode.label());
             return activeMode;
         }
 
-        activeMode = Mode.SIMULATED;
-        statusDetail = "No network; using the simulator";
+        applyMode(Mode.SIMULATED, "No network; using the simulator");
         LOGGER.info("Market data degraded to " + activeMode.label());
         return activeMode;
     }
@@ -128,11 +138,9 @@ public class MarketDataSourceSupervisor implements AutoCloseable {
             return;
         }
         if (restProvider.isPresent() && restProvider.get().isConnected()) {
-            activeMode = Mode.LIVE_REST;
-            statusDetail = "WebSocket disconnected; REST polling";
+            applyMode(Mode.LIVE_REST, "WebSocket disconnected; REST polling");
         } else {
-            activeMode = Mode.SIMULATED;
-            statusDetail = "All live sources unavailable; simulated";
+            applyMode(Mode.SIMULATED, "All live sources unavailable; simulated");
         }
         LOGGER.info("Market data degraded to " + activeMode.label());
     }

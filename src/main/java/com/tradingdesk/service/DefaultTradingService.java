@@ -256,7 +256,10 @@ public class DefaultTradingService implements TradingService {
 
     @Override
     public String marketDataStatus() {
-        return marketDataMode;
+        // Read through to the supervisor so reconnects and degradation are reflected immediately.
+        // The cached field is only a fallback for the brief window before the supervisor is attached.
+        var supervisor = marketDataSupervisor;
+        return supervisor == null ? marketDataMode : supervisor.display();
     }
 
     @Override
