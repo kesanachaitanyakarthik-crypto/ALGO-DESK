@@ -140,26 +140,29 @@ class MySqlPersistenceIntegrationTest {
     @Test
     @org.junit.jupiter.api.Order(4)
     void instrumentInsertSelectUpdateDelete() {
-        Instrument msft = new Instrument("MSFT", "Microsoft Corp.", InstrumentType.EQUITY);
+        // A dedicated symbol, so the DELETE cannot be blocked by rows this suite (or the running
+        // application) already created against a shared symbol such as MSFT.
+        String symbol = "ZZTEST";
+        Instrument testInstrument = new Instrument(symbol, "Delete Me Corp.", InstrumentType.EQUITY);
 
         // INSERT (upsert)
-        persistence.instruments().upsert(msft);
+        persistence.instruments().upsert(testInstrument);
 
         // SELECT
-        Optional<Instrument> loaded = persistence.instruments().find("MSFT");
+        Optional<Instrument> loaded = persistence.instruments().find(symbol);
         assertTrue(loaded.isPresent(), "instrument should be readable after insert");
-        assertEquals("Microsoft Corp.", loaded.get().displayName());
-        assertTrue(persistence.instruments().findAll().containsKey("MSFT"));
+        assertEquals("Delete Me Corp.", loaded.get().displayName());
+        assertTrue(persistence.instruments().findAll().containsKey(symbol));
 
         // UPDATE (upsert on the same key)
-        persistence.instruments().upsert(new Instrument("MSFT", "Microsoft Corporation", InstrumentType.EQUITY));
-        assertEquals("Microsoft Corporation",
-                persistence.instruments().find("MSFT").orElseThrow().displayName());
+        persistence.instruments().upsert(
+                new Instrument(symbol, "Renamed Corp.", InstrumentType.EQUITY));
+        assertEquals("Renamed Corp.",
+                persistence.instruments().find(symbol).orElseThrow().displayName());
 
-        // Restore the canonical name, then DELETE
-        persistence.instruments().upsert(msft);
-        assertTrue(persistence.instruments().delete("MSFT"), "delete should remove exactly one row");
-        assertTrue(persistence.instruments().find("MSFT").isEmpty(), "instrument should be gone after delete");
+        // DELETE
+        assertTrue(persistence.instruments().delete(symbol), "delete should remove exactly one row");
+        assertTrue(persistence.instruments().find(symbol).isEmpty(), "instrument should be gone after delete");
     }
 
     // ------------------------------------------------------------------ market events

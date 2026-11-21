@@ -20,6 +20,8 @@
         <junit.version>5.13.4</junit.version>
         <!-- Live MySQL integration tests stay disabled unless enabled on the command line. -->
         <db.enabled>false</db.enabled>
+        <!-- Live external market-data tests stay disabled unless enabled on the command line. -->
+        <live.enabled>false</live.enabled>
     </properties>
 
     <dependencies>
@@ -87,6 +89,7 @@
                     -->
                     <systemPropertyVariables>
                         <db.enabled>${db.enabled}</db.enabled>
+                        <live.enabled>${live.enabled}</live.enabled>
                     </systemPropertyVariables>
                     <environmentVariables>
                         <DB_URL>${env.DB_URL}</DB_URL>
