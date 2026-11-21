@@ -16,7 +16,16 @@ public class TradingDeskApplication extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        this.context = new ApplicationContext(true);
+        // Offline demo mode. Exercises the same no-network path the offline tests use (there is no
+        // second code path), so the SIMULATED fallback can be demonstrated without unplugging the
+        // machine. An environment variable is used as well as a system property because
+        // javafx-maven-plugin forks a JVM and does not forward -D flags; env vars are inherited.
+        // The value is trimmed: in cmd.exe `set TD_OFFLINE=true && ...` stores "true " with a
+        // trailing space, which Boolean.parseBoolean would read as false.
+        String offlineFlag = System.getenv("TD_OFFLINE");
+        boolean offline = Boolean.getBoolean("td.offline")
+                || (offlineFlag != null && Boolean.parseBoolean(offlineFlag.trim()));
+        this.context = new ApplicationContext(true, !offline);
 
         FXMLLoader loader = new FXMLLoader(TradingDeskApplication.class.getResource("/fxml/shell.fxml"));
         loader.setControllerFactory(type -> {
@@ -42,7 +51,8 @@ public class TradingDeskApplication extends Application {
 
         // Connect the live market data source on a background thread (the WebSocket handshake can
         // block for up to 10 s), so the window stays responsive and the audit strip can show the
-        // real provenance as soon as it is known.
+        // real provenance as soon as it is known. With -Dtd.offline=true the supervisor goes straight
+        // to SIMULATED and the UI labels it as such.
         context.startMarketDataAsync();
     }
 

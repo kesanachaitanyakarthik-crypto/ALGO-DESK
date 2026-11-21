@@ -48,6 +48,8 @@ public class MarketDataSourceSupervisor implements AutoCloseable {
 
     private final List<String> symbols;
     private final Consumer<StreamMessage> onLiveTick;
+    private final String wsBaseUrl;
+    private final String restBaseUrl;
     private final Optional<BinancePublicProvider> restProvider;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicLong liveTicks = new AtomicLong();
@@ -72,13 +74,32 @@ public class MarketDataSourceSupervisor implements AutoCloseable {
 
     public MarketDataSourceSupervisor(List<String> symbols, Consumer<StreamMessage> onLiveTick,
                                       boolean allowNetwork) {
+        this(symbols, onLiveTick, allowNetwork, null, null);
+    }
+
+    /**
+     * Test/demo seam: allows the endpoints to be overridden so the degradation chain
+     * (LIVE_WS → LIVE_REST → SIMULATED) can be exercised deterministically, instead of only being
+     * inspectable in code. A null argument keeps the real Binance endpoint.
+     *
+     * @param wsBaseUrl   WebSocket endpoint, or null for Binance
+     * @param restBaseUrl REST endpoint, or null for Binance
+     */
+    public MarketDataSourceSupervisor(List<String> symbols, Consumer<StreamMessage> onLiveTick,
+                                      boolean allowNetwork, String wsBaseUrl, String restBaseUrl) {
         if (symbols == null || symbols.isEmpty()) {
             throw new IllegalArgumentException("at least one symbol is required");
         }
         this.symbols = List.copyOf(symbols);
         this.onLiveTick = onLiveTick;
+        this.wsBaseUrl = wsBaseUrl == null
+                ? "wss://stream.binance.com:9443/stream?streams="
+                : wsBaseUrl;
+        this.restBaseUrl = restBaseUrl;
         this.restProvider = allowNetwork
-                ? Optional.of(new BinancePublicProvider())
+                ? Optional.of(restBaseUrl == null
+                        ? new BinancePublicProvider()
+                        : new BinancePublicProvider(restBaseUrl))
                 : Optional.empty();
     }
 
@@ -111,6 +132,7 @@ public class MarketDataSourceSupervisor implements AutoCloseable {
     private boolean connectSocket() {
         try {
             BinanceWebSocketClient client = new BinanceWebSocketClient(
+                    wsBaseUrl,
                     symbols,
                     message -> {
                         liveTicks.incrementAndGet();
@@ -156,6 +178,11 @@ public class MarketDataSourceSupervisor implements AutoCloseable {
 
     public boolean isLive() {
         return activeMode.kind().isReal();
+    }
+
+    /** True when no external source is in use, so every displayed price is generated locally. */
+    public boolean isSimulated() {
+        return activeMode == Mode.SIMULATED;
     }
 
     public String statusDetail() {
