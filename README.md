@@ -60,9 +60,24 @@ A genuine trainable classifier, not a label on the rule engine:
 - `TrainedPredictionEngine` — implements the existing `PredictionEngine` contract, so rule-based and
   ML signals are interchangeable and clearly labelled.
 
-**Measured on real BTCUSDT hourly data (1000 candles): test accuracy 30.3% vs a 23.1%
-majority-class baseline.** That is an honest result for 5-bar direction prediction, not a profitable
-edge.
+**Measured on real BTCUSDT hourly data (1000 candles, 5-bar horizon, reproducible):**
+
+| Metric | Value |
+|---|---|
+| Train / test samples | 686 / 294 |
+| Training accuracy | 43.15% |
+| **Test accuracy** | **22.45%** |
+| Majority-class baseline | 23.13% |
+
+**The classifier does not beat the majority-class baseline. It is an experimental component and it
+has no demonstrated predictive edge.** The 43% → 22% gap is overfitting plus regime shift between the
+chronological training and test windows; BUY/SELL recall is close to zero, so the model effectively
+predicts HOLD.
+
+This is stated plainly rather than tuned away: adjusting hyper-parameters until the test score looks
+good would be fitting the evaluation set, which is exactly the leakage the brief forbids. The value
+of the component is that a complete, leak-free training and evaluation pipeline exists and reports
+its real numbers.
 
 ---
 

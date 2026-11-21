@@ -50,30 +50,46 @@ tests pass.
 
 ### Measured benchmarks (this machine, `BenchmarkReportTest`)
 
-| Scenario | events/s | p50 | p95 | p99 | dropped | peak queue |
-|---|---|---|---|---|---|---|
-| 4 producers / 4 workers, q=512 | 47,592 | 0.2 µs | 0.3 µs | 0.6 µs | 12,211 | 512/512 |
-| 8 producers / 4 workers, q=256 | 187,321 | 0.2 µs | 0.3 µs | 0.5 µs | 15,800 | 256/256 |
-| 8 producers / 2 workers, q=64 (saturated) | 100,974 | 0.1 µs | 0.2 µs | 0.4 µs | 28,468 | 64/64 |
-| 2 producers / 8 workers, q=4096 | 91,111 | 0.1 µs | 0.3 µs | 0.6 µs | 0 | 2442/4096 |
+Latency is reported in **three separate scopes**, because they are not interchangeable:
 
-The drop counts are the point: with a small queue the system degrades by **dropping rather than
-blocking**, which is the backpressure behaviour the project sets out to demonstrate.
+- **proc** — dequeue → work complete. Pure consumer cost.
+- **wait** — publish → dequeue. Queue saturation cost.
+- **e2e** — publish → work complete. What a producer actually observes.
 
-### AI/ML evaluation (real BTCUSDT 1h, 1000 candles)
+Workload is real per-event work (64 sqrt operations), not a no-op.
+
+| Scenario | events/s | proc p50 | proc p99 | wait p50 | e2e p50 | dropped | peak queue |
+|---|---|---|---|---|---|---|---|
+| 4 prod / 4 workers, q=512 | 71,567 | 0.90 µs | 1.90 µs | 528.70 µs | 529.70 µs | 3,727 | 512/512 |
+| 8 prod / 4 workers, q=256 | 150,739 | 0.90 µs | 2.00 µs | 418.70 µs | 419.60 µs | 14,459 | 256/256 |
+| 8 prod / 2 workers, q=64 (saturated) | 161,816 | 0.80 µs | 1.30 µs | 74.20 µs | 75.00 µs | 17,950 | 64/64 |
+| 2 prod / 8 workers, q=4096 | 85,753 | 0.50 µs | 1.20 µs | 993.10 µs | 993.60 µs | 0 | 2351/4096 |
+
+Drops are the point: with a small queue the system degrades by **dropping rather than blocking**.
+
+**Why the earlier 0.1–0.6 µs figures were not comparable.** Those were `processing`-only on a *no-op*
+workload, so they measured dequeue overhead, not data handling. The same no-op run now reports all
+scopes: **processing p50 0.10 µs but end-to-end p50 133.40 µs.** That is why a 0.1 µs number sat
+next to a ~99 µs live pipeline figure without contradiction — they measured different things. The
+live GUI figure (~9.5 µs) is `MetricsRegistry` processing latency inside the real pipeline.
+
+### AI/ML evaluation (real BTCUSDT 1h, 1000 candles, reproducible)
 
 | Metric | Value |
 |---|---|
 | Train / test samples | 686 / 294 |
-| Training accuracy | 44.0% |
-| **Test accuracy** | **30.3%** |
-| Majority-class baseline | 23.1% |
+| Training accuracy | 43.15% |
+| **Test accuracy** | **22.45%** |
+| Majority-class baseline | 23.13% |
+| BUY / SELL / HOLD recall | 0.094 / 0.014 / 0.824 |
 | Horizon | 5 bars |
 
-Honest reading: the model beats a majority-class baseline by ~7 points, which shows it learns
-something, but this is far from a profitable edge. Three defects were found and fixed while
-measuring: feature standardisation (the model collapsed to one class without it), class weighting
-(full inverse-frequency overshot, √ weighting is used), and the labelled-threshold band.
+**The model does not beat the majority-class baseline.** An earlier report in this file claimed
+30.3%; re-running the same test three times reproduces 22.45% every time, so that figure was stale
+and has been corrected. The model is an experimental component with no demonstrated edge — not tuned
+to look better, because adjusting hyper-parameters against the test set is leakage. What is genuinely
+verified: chronological split, no look-ahead, training-only standardisation, and a real baseline
+comparison.
 
 ### Verified live this session
 
