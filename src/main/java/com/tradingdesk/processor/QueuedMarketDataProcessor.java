@@ -75,12 +75,14 @@ public class QueuedMarketDataProcessor implements MarketDataProcessor {
     }
 
     void process(MarketEvent event) {
-        Instant startedAt = Instant.now();
+        // System.nanoTime() is a monotonic clock with nanosecond resolution. Instant.now() only
+        // has microsecond resolution, which made sub-microsecond processing read as exactly 0.
+        long startedAt = System.nanoTime();
         try {
             for (MarketEventConsumer consumer : consumers) {
                 consumer.consume(event);
             }
-            metrics.recordProcessed(Duration.between(startedAt, Instant.now()));
+            metrics.recordProcessed(Duration.ofNanos(System.nanoTime() - startedAt));
         } catch (RuntimeException e) {
             metrics.recordFailure();
             LOGGER.log(Level.FINE, "Market event processing failed", e);

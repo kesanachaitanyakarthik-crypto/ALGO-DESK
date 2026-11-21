@@ -1,16 +1,68 @@
 # ALGO DESK
 
-**High-Frequency Algorithmic Trading System**
+**High-Frequency Algorithmic Trading Desk — Real-Time Market Data Processing and AI-Driven Trading Signals**
 
-A high-frequency algorithmic trading **simulation** built with Java 21 and JavaFX. It streams
-simulated market data through a bounded queue and a worker pool, computes technical indicators,
-generates transparent rule-based trading signals, applies risk controls, and simulates order
-execution — all displayed on a live dark-themed trading terminal and optionally persisted to MySQL
-via JDBC.
+> **EDUCATIONAL SIMULATION ONLY — REAL MARKET DATA, VIRTUAL TRADING. NO REAL-MONEY TRANSACTIONS.**
 
-> **Simulation only.** This application never connects to a real brokerage, never places real
-> orders, and never handles real money. It exists as an academic project demonstrating Java
-> concurrency, OOP, and desktop UI development.
+An academic project demonstrating Java multithreading and concurrency utilities through a
+high-frequency trading simulation. It ingests **real public Binance market data** over WebSocket and
+REST, pushes every tick through a bounded queue and a worker pool, computes technical indicators,
+generates rule-based **and** machine-learning signals, applies risk controls, and executes **virtual**
+orders against a simulated portfolio.
+
+There is no brokerage connection, no order routing, no deposit or withdrawal, and no live execution
+path anywhere in the codebase.
+
+---
+
+## Platform capabilities
+
+### Real market data (`com.tradingdesk.marketdata`)
+
+- `BinanceWebSocketClient` — public combined streams (`@trade`, `@bookTicker`) over the JDK
+  `WebSocket`, with automatic reconnection (exponential backoff, capped), a heartbeat/staleness
+  watchdog, duplicate suppression and a disconnect callback.
+- `BinancePublicProvider` — public REST for OHLCV candles and quotes; request throttling and caching.
+- `MarketDataSourceSupervisor` — degrades `LIVE_WS → LIVE_REST → SIMULATED` and reports only the mode
+  it actually achieved. The UI shows that label, so simulated data is never presented as live.
+- `LiveTickAdapter` — converts stream messages into `MarketEvent`s and **publishes them into the same
+  bounded queue** the simulator uses, so live data flows through the identical concurrency pipeline.
+
+### High-frequency event processing (`concurrency`, `processor`)
+
+```
+real ticks / simulator → MarketEventQueue (bounded) → ExecutorService workers
+   → TradingPipeline → indicators → prediction → risk → order matching → portfolio → UI
+```
+
+- Bounded `LinkedBlockingQueue` with explicit backpressure (drop + count, never block the producer).
+- Fixed worker pool with worker monitoring, queue-depth monitoring and safe shutdown.
+- `MetricsRegistry` — events processed, throughput, average/peak latency, **P50/P95/P99** via
+  `LatencySampler`, rejected and dropped counts, process CPU load.
+- `StressTestRunner` — concurrent producers vs a worker pool, reporting measured throughput, latency
+  percentiles, drops and peak queue depth.
+
+### Technical indicators (`indicators`)
+
+SMA, EMA, ROC, rolling volatility, order-book imbalance, plus RSI (Wilder), MACD, Bollinger Bands,
+ATR, Stochastic Oscillator and VWAP — all computed from the same rolling window and unit-tested
+against hand-computed reference values.
+
+### AI/ML prediction (`com.tradingdesk.ml`)
+
+A genuine trainable classifier, not a label on the rule engine:
+
+- `FeatureExtractor` — SMA/EMA ratios, RSI, ROC, volatility, MACD histogram, depth imbalance.
+- `LogisticRegressionClassifier` — multinomial softmax, mini-batch gradient descent, per-feature
+  standardisation learned from the **training set only**, √inverse-frequency class weighting, L2.
+- `ModelTrainer` — forward-return labels, strictly chronological train/test split (no shuffling, so no
+  leakage), precision/recall, confusion matrix and a majority-class baseline.
+- `TrainedPredictionEngine` — implements the existing `PredictionEngine` contract, so rule-based and
+  ML signals are interchangeable and clearly labelled.
+
+**Measured on real BTCUSDT hourly data (1000 candles): test accuracy 30.3% vs a 23.1%
+majority-class baseline.** That is an honest result for 5-bar direction prediction, not a profitable
+edge.
 
 ---
 
