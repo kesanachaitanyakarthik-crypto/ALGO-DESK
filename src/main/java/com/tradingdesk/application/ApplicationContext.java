@@ -8,6 +8,9 @@ import com.tradingdesk.concurrency.WorkerRegistry;
 import com.tradingdesk.database.DatabaseConnection;
 import com.tradingdesk.database.MySqlPersistence;
 import com.tradingdesk.database.Persistence;
+import com.tradingdesk.marketdata.LiveTickAdapter;
+import com.tradingdesk.marketdata.MarketDataSourceSupervisor;
+import com.tradingdesk.marketdata.ws.StreamMessage;
 import com.tradingdesk.model.Instrument;
 import com.tradingdesk.model.InstrumentType;
 import com.tradingdesk.model.MarketEvent;
@@ -70,9 +73,20 @@ public final class ApplicationContext implements AutoCloseable {
     private final DefaultTradingService tradingService;
     private final ScheduledExecutorService persistenceTimer;
     private final Persistence persistence;
+    private final MarketDataSourceSupervisor marketDataSupervisor;
+    private final LiveTickAdapter liveTickAdapter;
+    private final com.tradingdesk.paper.PaperBroker paperBroker;
     private volatile boolean closed;
 
     public ApplicationContext(boolean connectToDatabase) {
+        this(connectToDatabase, true);
+    }
+
+    /**
+     * @param connectToDatabase whether to attempt MySQL
+     * @param allowNetwork     whether to attempt live market data (tests pass false for determinism)
+     */
+    public ApplicationContext(boolean connectToDatabase, boolean allowNetwork) {
         Logging.configure(Level.INFO);
         int workersCount = Math.max(2, Runtime.getRuntime().availableProcessors() - 1);
         this.executors = new ExecutorManager(workersCount);
@@ -105,9 +119,28 @@ public final class ApplicationContext implements AutoCloseable {
         this.processor = new QueuedMarketDataProcessor(
                 queue, executors, metrics, workers, List.of(pipeline));
 
+        // Paper trading: a virtual account and a realistic simulated execution engine, wired to the
+        // SAME portfolio and risk manager as the automated path so balances cannot diverge.
+        this.paperBroker = new com.tradingdesk.paper.PaperBroker(
+                new com.tradingdesk.paper.PaperAccount("PAPER-USD", "USD", 1_000_000.0),
+                portfolioManager,
+                new DefaultRiskManager(RiskConfiguration.defaults()),
+                new com.tradingdesk.paper.SimulatedExecutionEngine(
+                        com.tradingdesk.paper.ExecutionCosts.realistic()));
+
+        // Real market data: ticks are adapted into MarketEvents and published into the SAME bounded
+        // queue, so live data flows through the identical concurrency pipeline.
+        this.liveTickAdapter = new LiveTickAdapter(LiveTickAdapter.defaultMapping());
+        this.marketDataSupervisor = new MarketDataSourceSupervisor(
+                List.copyOf(LiveTickAdapter.defaultMapping().keySet()),
+                this::onLiveTick,
+                allowNetwork);
+
         this.tradingService = new DefaultTradingService(
                 runner, processor, executors, metrics, workers, queue,
                 pipeline, orderManagementSystem, portfolioManager, prices, watchlist);
+        this.tradingService.attachMarketData(marketDataSupervisor);
+        this.tradingService.attachPaperBroker(paperBroker);
 
         if (persistence != null) {
             tradingService.setDatabaseStatus("Connected: " + persistence.database().config().url());
@@ -122,6 +155,26 @@ public final class ApplicationContext implements AutoCloseable {
             return thread;
         });
         persistenceTimer.scheduleAtFixedRate(this::persistMetrics, 5, 5, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Receives a real streaming message, converts it to a {@link MarketEvent} and publishes it into
+     * the existing bounded queue. This is the seam where live data enters the concurrency pipeline —
+     * it is deliberately the only path, so real ticks get the same backpressure and worker
+     * distribution as simulated ones.
+     */
+    private void onLiveTick(StreamMessage message) {
+        MarketEvent event = liveTickAdapter.adapt(message);
+        if (event == null) {
+            metrics.recordRejected();
+            return;
+        }
+        if (!queue.offer(event)) {
+            metrics.recordDropped();
+            return;
+        }
+        metrics.recordQueueDepth(queue.depth());
+        paperBroker.onMarketEvent(event);
     }
 
     private Persistence connectPersistence() {
@@ -201,10 +254,22 @@ public final class ApplicationContext implements AutoCloseable {
 
     public void start() {
         tradingService.start();
+        // Attempt live market data; if it degrades to simulated the UI shows that honestly.
+        MarketDataSourceSupervisor.Mode mode = marketDataSupervisor.start();
+        tradingService.setMarketDataMode(mode.label() + " · " + marketDataSupervisor.statusDetail());
     }
 
     public void stop() {
         tradingService.stop();
+        marketDataSupervisor.stop();
+    }
+
+    public com.tradingdesk.paper.PaperBroker paperBroker() {
+        return paperBroker;
+    }
+
+    public MarketDataSourceSupervisor marketData() {
+        return marketDataSupervisor;
     }
 
     @Override
@@ -214,6 +279,7 @@ public final class ApplicationContext implements AutoCloseable {
         }
         closed = true;
         tradingService.stop();
+        marketDataSupervisor.stop();
         persistenceTimer.shutdownNow();
         processor.stop();
         runner.close();

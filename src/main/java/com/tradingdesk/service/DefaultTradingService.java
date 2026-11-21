@@ -11,6 +11,7 @@ import com.tradingdesk.model.Order;
 import com.tradingdesk.model.PortfolioSnapshot;
 import com.tradingdesk.model.RiskAlert;
 import com.tradingdesk.model.TradeSignal;
+import com.tradingdesk.model.Side;
 import com.tradingdesk.orders.OrderManagementSystem;
 import com.tradingdesk.orders.OrderStatistics;
 import com.tradingdesk.portfolio.PortfolioManager;
@@ -49,6 +50,9 @@ public class DefaultTradingService implements TradingService {
     private final CopyOnWriteArrayList<String> logs = new CopyOnWriteArrayList<>();
     private final Set<String> selected = new LinkedHashSet<>();
     private volatile String databaseStatus = "Not connected";
+    private volatile String marketDataMode = "SIMULATED";
+    private volatile com.tradingdesk.marketdata.MarketDataSourceSupervisor marketDataSupervisor;
+    private volatile com.tradingdesk.paper.PaperBroker paperBroker;
 
     public DefaultTradingService(SimulationRunner runner,
                                  QueuedMarketDataProcessor processor,
@@ -248,6 +252,145 @@ public class DefaultTradingService implements TradingService {
     @Override
     public String databaseStatus() {
         return databaseStatus;
+    }
+
+    @Override
+    public String marketDataStatus() {
+        return marketDataMode;
+    }
+
+    @Override
+    public double p50LatencyMicros() {
+        return metrics.p50LatencyNanos() / 1_000.0;
+    }
+
+    @Override
+    public double p95LatencyMicros() {
+        return metrics.p95LatencyNanos() / 1_000.0;
+    }
+
+    @Override
+    public double p99LatencyMicros() {
+        return metrics.p99LatencyNanos() / 1_000.0;
+    }
+
+    @Override
+    public long eventsRejected() {
+        return metrics.eventsRejected();
+    }
+
+    @Override
+    public double processCpuLoad() {
+        return metrics.processCpuLoad();
+    }
+
+    @Override
+    public PaperTradingView paperTrading() {
+        com.tradingdesk.paper.PaperBroker broker = paperBroker;
+        if (broker == null) {
+            return new PaperTradingView("-", "-", "-", "-", "-", java.util.List.of(), 0);
+        }
+        var account = broker.account();
+        java.util.List<PaperTradingView.Row> rows = broker.history(40).stream()
+                .map(order -> new PaperTradingView.Row(
+                        order.id().toString().substring(0, 8),
+                        order.instrument().symbol(),
+                        order.side().name(),
+                        order.request().kind().name(),
+                        Long.toString(order.quantity()),
+                        Long.toString(order.filledQuantity()),
+                        order.filledQuantity() == 0 ? "-" : Formatters.price(order.averagePrice()),
+                        order.status().name(),
+                        order.rejectionReason() == null ? "" : order.rejectionReason()))
+                .toList();
+        return new PaperTradingView(
+                account.accountId(),
+                Formatters.money(account.cash()),
+                Formatters.money(account.usedMargin()),
+                Formatters.money(account.equity()),
+                Formatters.money(account.realizedPnl()),
+                rows,
+                broker.openOrders().size());
+    }
+
+    @Override
+    public String placePaperOrder(String symbol, String side, String kind,
+                                  long quantity, double price) {
+        com.tradingdesk.paper.PaperBroker broker = paperBroker;
+        if (broker == null) {
+            return "Paper trading is not available";
+        }
+        Instrument instrument = watchlist.stream()
+                .filter(candidate -> candidate.symbol().equals(symbol))
+                .findFirst()
+                .orElse(null);
+        if (instrument == null) {
+            return "Unknown instrument: " + symbol;
+        }
+        try {
+            Side orderSide = Side.valueOf(side);
+            com.tradingdesk.paper.OrderKind orderKind =
+                    com.tradingdesk.paper.OrderKind.valueOf(kind);
+            double referencePrice = price > 0.0
+                    ? price
+                    : latestPrices().getOrDefault(symbol, 0.0);
+            if (referencePrice <= 0.0) {
+                return "No market price available for " + symbol;
+            }
+
+            com.tradingdesk.paper.OrderRequest request = switch (orderKind) {
+                case MARKET -> com.tradingdesk.paper.OrderRequest.market(
+                        instrument, orderSide, quantity);
+                case LIMIT -> com.tradingdesk.paper.OrderRequest.limit(
+                        instrument, orderSide, quantity, price);
+                case STOP -> com.tradingdesk.paper.OrderRequest.stop(
+                        instrument, orderSide, quantity, price);
+                case STOP_LIMIT -> com.tradingdesk.paper.OrderRequest.stopLimit(
+                        instrument, orderSide, quantity, price, price);
+                case TAKE_PROFIT -> com.tradingdesk.paper.OrderRequest.takeProfit(
+                        instrument, orderSide, quantity, price);
+            };
+
+            var submission = broker.submit(request, referencePrice);
+            if (submission.rejected()) {
+                String reason = submission.order().rejectionReason();
+                log("PAPER REJECTED " + symbol + ": " + reason);
+                return "Rejected: " + reason;
+            }
+            log("PAPER " + orderKind + " " + orderSide + " " + quantity + " " + symbol);
+            return "Order " + submission.order().status() + " (" + symbol + " "
+                    + orderSide + " " + quantity + ")";
+        } catch (IllegalArgumentException e) {
+            return "Invalid order: " + e.getMessage();
+        }
+    }
+
+    @Override
+    public String runStressTest() {
+        try {
+            var report = new com.tradingdesk.concurrency.StressTestRunner().quickRun();
+            log("Stress test: " + report.summary());
+            return report.summary();
+        } catch (RuntimeException e) {
+            log("Stress test failed: " + e.getMessage());
+            return "Stress test failed: " + e.getMessage();
+        }
+    }
+
+    /** Attaches the market data supervisor so the UI can display the real source. */
+    public void attachMarketData(com.tradingdesk.marketdata.MarketDataSourceSupervisor supervisor) {
+        this.marketDataSupervisor = supervisor;
+        this.marketDataMode = supervisor.display();
+    }
+
+    /** Attaches the paper broker so the Orders screen can place and list virtual orders. */
+    public void attachPaperBroker(com.tradingdesk.paper.PaperBroker broker) {
+        this.paperBroker = broker;
+    }
+
+    /** Records the mode actually achieved, for honest display. */
+    public void setMarketDataMode(String mode) {
+        this.marketDataMode = mode;
     }
 
     public void setDatabaseStatus(String status) {

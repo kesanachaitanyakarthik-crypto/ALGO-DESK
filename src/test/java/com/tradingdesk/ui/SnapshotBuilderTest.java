@@ -217,7 +217,22 @@ class SnapshotBuilderTest {
         @Override public double peakLatencyMicros() { return 1_200.0; }
         @Override public double throughputPerSecond() { return 33.3; }
         @Override public String databaseStatus() { return databaseStatus; }
+        @Override public String marketDataStatus() { return "SIMULATED · test"; }
         @Override public List<String> recentLogs(int limit) { return List.of("log line"); }
         @Override public List<Instrument> watchlist() { return new ArrayList<>(List.of(AAPL, MSFT)); }
+        @Override public double p50LatencyMicros() { return 100.0; }
+        @Override public double p95LatencyMicros() { return 400.0; }
+        @Override public double p99LatencyMicros() { return 900.0; }
+        @Override public long eventsRejected() { return 0; }
+        @Override public double processCpuLoad() { return 0.25; }
+        @Override public com.tradingdesk.service.PaperTradingView paperTrading() {
+            return new com.tradingdesk.service.PaperTradingView(
+                    "PAPER", "1000.00", "0.00", "1000.00", "0.00", List.of(), 0);
+        }
+        @Override public String placePaperOrder(String symbol, String side, String kind,
+                                                long quantity, double price) {
+            return "ok";
+        }
+        @Override public String runStressTest() { return "no stress"; }
     }
 }

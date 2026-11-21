@@ -66,7 +66,31 @@ public interface TradingService {
 
     String databaseStatus();
 
+    /** Human-readable description of the market data source actually in use. */
+    String marketDataStatus();
+
     List<String> recentLogs(int limit);
 
     List<Instrument> watchlist();
+
+    /** Per-latency percentiles in microseconds. */
+    double p50LatencyMicros();
+
+    double p95LatencyMicros();
+
+    double p99LatencyMicros();
+
+    long eventsRejected();
+
+    /** Process CPU load 0..1, or -1 when unavailable. */
+    double processCpuLoad();
+
+    /** Paper trading account and orders, for the Orders screen. */
+    PaperTradingView paperTrading();
+
+    /** Submits a paper order; returns a short human-readable outcome. */
+    String placePaperOrder(String symbol, String side, String kind, long quantity, double price);
+
+    /** Runs a stress test and returns its measured summary line. */
+    String runStressTest();
 }
