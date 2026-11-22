@@ -42,3 +42,6 @@ build/
 config/db.properties
 *.env
 .env
+
+.idea/
+.commandcode/
