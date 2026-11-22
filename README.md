@@ -1,4 +1,4 @@
-# ALGO DESK
+﻿# ALGO DESK
 
 **A Java/JavaFX algorithmic-trading desk simulation**
 
@@ -10,6 +10,31 @@ and JavaFX UI design. It can consume public Binance data and also run entirely w
 
 There is no brokerage connection, exchange order-placement code, deposit or withdrawal flow, or
 live-trading execution path.
+
+## Application Screenshots
+
+### Dashboard
+
+The dashboard brings the live market overview, portfolio metrics, recent signals, and system activity
+together in one view.
+
+![Dashboard](Screenshots/dashboard.png)
+
+<details>
+<summary>Explore all application screens</summary>
+
+| Screen | Preview |
+|---|---|
+| Market Watch — instrument prices, session changes, volume, and trends | ![Market Watch screen](Screenshots/market-watch.png) |
+| Trading Signals — generated signals and their BUY/SELL/HOLD distribution | ![Trading Signals screen](Screenshots/trading-signals.png) |
+| Portfolio — virtual holdings, equity, cash, and profit and loss | ![Portfolio screen](Screenshots/portfolio.png) |
+| Orders — paper orders, statuses, and execution history | ![Orders screen](Screenshots/orders.png) |
+| Risk Management — active risk alerts and configured thresholds | ![Risk Management screen](Screenshots/risk-management.png) |
+| Analytics — price trends and technical indicator visualizations | ![Analytics screen](Screenshots/analytics.png) |
+| System Monitoring — queue, worker, latency, throughput, and event metrics | ![System Monitoring screen](Screenshots/system-monitoring.png) |
+| Settings — application details, runtime, model, and database status | ![Settings screen](Screenshots/settings.png) |
+
+</details>
 
 ## Highlights
 
